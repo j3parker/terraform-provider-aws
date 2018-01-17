@@ -105,6 +105,7 @@ func resourceAwsEcsClusterImport(d *schema.ResourceData, meta interface{}) ([]*s
 		Service:   "ecs",
 		Resource:  fmt.Sprintf("cluster/%s", d.Id()),
 	}.String())
+
 	return []*schema.ResourceData{d}, nil
 }
 
