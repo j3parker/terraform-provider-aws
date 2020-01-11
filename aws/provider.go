@@ -583,6 +583,7 @@ func Provider() terraform.ResourceProvider {
 			"aws_gamelift_build":                                      resourceAwsGameliftBuild(),
 			"aws_gamelift_fleet":                                      resourceAwsGameliftFleet(),
 			"aws_gamelift_game_session_queue":                         resourceAwsGameliftGameSessionQueue(),
+			"aws_gamelift_script":                                     resourceAwsGameliftScript(),
 			"aws_glacier_vault":                                       resourceAwsGlacierVault(),
 			"aws_glacier_vault_lock":                                  resourceAwsGlacierVaultLock(),
 			"aws_globalaccelerator_accelerator":                       resourceAwsGlobalAcceleratorAccelerator(),
