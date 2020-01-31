@@ -12,7 +12,7 @@ Provides an SSM Parameter resource.
 
 ## Example Usage
 
-To store a basic string parameter:
+### Basic Example
 
 ```hcl
 resource "aws_ssm_parameter" "foo" {
@@ -22,7 +22,7 @@ resource "aws_ssm_parameter" "foo" {
 }
 ```
 
-To store an encrypted string using the default SSM KMS key:
+### SecureString Parameter Example
 
 ```hcl
 resource "aws_db_instance" "default" {
@@ -50,6 +50,29 @@ resource "aws_ssm_parameter" "secret" {
 }
 ```
 
+### Parameter Policies Example
+
+```hcl
+resource "aws_ssm_parameter" "foo" {
+  name  = "foo"
+  type  = "String"
+  value = "bar"
+  tier  = "Advanced"
+
+  policies = <<EOF
+[{
+   "Type":"Expiration",
+   "Version":"1.0",
+   "Attributes":{
+      "Timestamp":"2050-12-02T21:34:33.000Z"
+   }
+}]
+EOF
+
+}
+```
+
+
 ~> **Note:** The unencrypted value of a SecureString will be stored in the raw state as plain-text.
 [Read more about sensitive data in state](/docs/state/sensitive-data.html).
 
@@ -66,6 +89,7 @@ The following arguments are supported:
 * `overwrite` - (Optional) Overwrite an existing parameter. If not specified, will default to `false` if the resource has not been created by terraform to avoid overwrite of existing resource and will default to `true` otherwise (terraform lifecycle rules should then be used to manage the update behavior).
 * `allowed_pattern` - (Optional) A regular expression used to validate the parameter value.
 * `tags` - (Optional) A map of tags to assign to the object.
+* `policies` - (Optional) One or more policies to apply to a parameter. This action takes a JSON array. Can only be used with `Advanced` tier parameter. For more information about parameter policies, see Working with Parameter Policies (http://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-paramstore-su-policies.html).
 
 ## Attributes Reference
 
