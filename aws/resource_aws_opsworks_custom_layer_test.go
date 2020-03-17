@@ -137,11 +137,6 @@ func TestAccAWSOpsworksCustomLayer_noVPC(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
-			},
-			{
 				Config: testAccAwsOpsworksCustomLayerConfigUpdate(stackName),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "name", stackName),
