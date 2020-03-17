@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/opsworks"
@@ -50,16 +51,14 @@ func resourceAwsOpsworksStack() *schema.Resource {
 			},
 
 			"service_role_arn": {
-				Type:         schema.TypeString,
-				Required:     true,
-				ForceNew:     true,
-				ValidateFunc: validateArn,
+				Type:     schema.TypeString,
+				Required: true,
+				ForceNew: true,
 			},
 
 			"default_instance_profile_arn": {
-				Type:         schema.TypeString,
-				Required:     true,
-				ValidateFunc: validateArn,
+				Type:     schema.TypeString,
+				Required: true,
 			},
 
 			"color": {
@@ -100,13 +99,6 @@ func resourceAwsOpsworksStack() *schema.Resource {
 						"type": {
 							Type:     schema.TypeString,
 							Required: true,
-							ValidateFunc: validation.StringInSlice([]string{
-								opsworks.SourceTypeArchive,
-								opsworks.SourceTypeGit,
-								opsworks.SourceTypeS3,
-								opsworks.SourceTypeSvn,
-								"other",
-							}, false),
 						},
 
 						"url": {
@@ -160,11 +152,7 @@ func resourceAwsOpsworksStack() *schema.Resource {
 			"default_root_device_type": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  opsworks.RootDeviceTypeInstanceStore,
-				ValidateFunc: validation.StringInSlice([]string{
-					opsworks.RootDeviceTypeEbs,
-					opsworks.RootDeviceTypeInstanceStore,
-				}, false),
+				Default:  "instance-store",
 			},
 
 			"default_ssh_key_name": {
@@ -315,25 +303,27 @@ func resourceAwsOpsworksStackRead(d *schema.ResourceData, meta interface{}) erro
 	for {
 		resp, dErr = client.DescribeStacks(req)
 		if dErr != nil {
-			if isAWSErr(dErr, opsworks.ErrCodeResourceNotFoundException, "") {
-				if notFound < 1 {
-					// If we haven't already, try us-east-1, legacy connection
-					notFound++
-					var connErr error
-					client, connErr = opsworksConnForRegion("us-east-1", meta)
-					if connErr != nil {
-						return connErr
+			if awserr, ok := dErr.(awserr.Error); ok {
+				if awserr.Code() == "ResourceNotFoundException" {
+					if notFound < 1 {
+						// If we haven't already, try us-east-1, legacy connection
+						notFound++
+						var connErr error
+						client, connErr = opsworksConnForRegion("us-east-1", meta)
+						if connErr != nil {
+							return connErr
+						}
+						// start again from the top of the FOR loop, but with a client
+						// configured to talk to us-east-1
+						continue
 					}
-					// start again from the top of the FOR loop, but with a client
-					// configured to talk to us-east-1
-					continue
-				}
 
-				// We've tried both the original and us-east-1 endpoint, and the stack
-				// is still not found
-				log.Printf("[DEBUG] OpsWorks stack (%s) not found", d.Id())
-				d.SetId("")
-				return nil
+					// We've tried both the original and us-east-1 endpoint, and the stack
+					// is still not found
+					log.Printf("[DEBUG] OpsWorks stack (%s) not found", d.Id())
+					d.SetId("")
+					return nil
+				}
 				// not ResoureNotFoundException, fall through to returning error
 			}
 			return dErr
