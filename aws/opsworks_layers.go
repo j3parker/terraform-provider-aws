@@ -265,7 +265,7 @@ func (lt *opsworksLayerType) SchemaResource() *schema.Resource {
 								},
 								"file": {
 									Type:     schema.TypeString,
-									Optional: true,
+									Required: true,
 								},
 								"file_fingerprint_lines": {
 									Type:     schema.TypeString,
@@ -283,7 +283,7 @@ func (lt *opsworksLayerType) SchemaResource() *schema.Resource {
 								},
 								"log_group_name": {
 									Type:     schema.TypeString,
-									Optional: true,
+									Required: true,
 								},
 								"multiline_start_pattern": {
 									Type:     schema.TypeString,
