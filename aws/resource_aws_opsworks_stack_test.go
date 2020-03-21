@@ -1038,7 +1038,8 @@ resource "aws_iam_role_policy" "opsworks_service" {
         "iam:PassRole",
         "cloudwatch:GetMetricStatistics",
         "elasticloadbalancing:*",
-        "rds:*"
+        "rds:*",
+		"ecs:*"
       ],
       "Effect": "Allow",
       "Resource": [
