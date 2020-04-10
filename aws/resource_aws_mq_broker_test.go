@@ -821,27 +821,27 @@ func TestAccAWSMqBroker_updateEngineVersion(t *testing.T) {
 	brokerName := fmt.Sprintf("tf-acc-test-%s", acctest.RandString(5))
 	resourceName := "aws_mq_broker.test"
 
-		resource.ParallelTest(t, resource.TestCase{
-			PreCheck:     func() { testAccPreCheck(t); testAccPreCheckAWSMq(t) },
-			Providers:    testAccProviders,
-			CheckDestroy: testAccCheckAwsMqBrokerDestroy,
-			Steps: []resource.TestStep{
-				{
-					Config: testAccMqBrokerConfig(sgName, brokerName),
-					Check: resource.ComposeTestCheckFunc(
-						testAccCheckAwsMqBrokerExists(resourceName),
-						resource.TestCheckResourceAttr(resourceName, "engine_version", "5.15.0"),
-					),
-				},
-				{
-					Config: testAccMqBrokerEngineVersionUpdateConfig(sgName, brokerName),
-					Check: resource.ComposeTestCheckFunc(
-						testAccCheckAwsMqBrokerExists(resourceName),
-						resource.TestCheckResourceAttr(resourceName, "engine_version", "5.15.9"),
-					),
-				},
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t); testAccPreCheckAWSMq(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAwsMqBrokerDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccMqBrokerConfig(sgName, brokerName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAwsMqBrokerExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "engine_version", "5.15.0"),
+				),
 			},
-		})
+			{
+				Config: testAccMqBrokerEngineVersionUpdateConfig(sgName, brokerName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAwsMqBrokerExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "engine_version", "5.15.9"),
+				),
+			},
+		},
+	})
 }
 
 func testAccCheckAwsMqBrokerDestroy(s *terraform.State) error {
