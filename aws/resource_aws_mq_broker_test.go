@@ -816,6 +816,34 @@ func TestAccAWSMqBroker_disappears(t *testing.T) {
 	})
 }
 
+func TestAccAWSMqBroker_updateEngineVersion(t *testing.T) {
+	sgName := fmt.Sprintf("tf-acc-test-%s", acctest.RandString(5))
+	brokerName := fmt.Sprintf("tf-acc-test-%s", acctest.RandString(5))
+	resourceName := "aws_mq_broker.test"
+
+		resource.ParallelTest(t, resource.TestCase{
+			PreCheck:     func() { testAccPreCheck(t); testAccPreCheckAWSMq(t) },
+			Providers:    testAccProviders,
+			CheckDestroy: testAccCheckAwsMqBrokerDestroy,
+			Steps: []resource.TestStep{
+				{
+					Config: testAccMqBrokerConfig(sgName, brokerName),
+					Check: resource.ComposeTestCheckFunc(
+						testAccCheckAwsMqBrokerExists(resourceName),
+						resource.TestCheckResourceAttr(resourceName, "engine_version", "5.15.0"),
+					),
+				},
+				{
+					Config: testAccMqBrokerEngineVersionUpdateConfig(sgName, brokerName),
+					Check: resource.ComposeTestCheckFunc(
+						testAccCheckAwsMqBrokerExists(resourceName),
+						resource.TestCheckResourceAttr(resourceName, "engine_version", "5.15.9"),
+					),
+				},
+			},
+		})
+}
+
 func testAccCheckAwsMqBrokerDestroy(s *terraform.State) error {
 	conn := testAccProvider.Meta().(*AWSClient).mqconn
 
@@ -907,6 +935,32 @@ resource "aws_mq_broker" "test" {
   engine_version     = "5.15.0"
   host_instance_type = "mq.t2.micro"
   security_groups    = [aws_security_group.test.id]
+
+  logs {
+    general = true
+  }
+
+  user {
+    username = "Test"
+    password = "TestTest1234"
+  }
+}
+`, sgName, brokerName)
+}
+
+func testAccMqBrokerEngineVersionUpdateConfig(sgName, brokerName string) string {
+	return fmt.Sprintf(`
+resource "aws_security_group" "test" {
+  name = "%s"
+}
+
+resource "aws_mq_broker" "test" {
+  broker_name        = "%s"
+  apply_immediately  = true
+  engine_type        = "ActiveMQ"
+  engine_version     = "5.15.9"
+  host_instance_type = "mq.t2.micro"
+  security_groups    = ["${aws_security_group.test.id}"]
 
   logs {
     general = true
