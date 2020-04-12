@@ -137,7 +137,7 @@ func TestAccAWSEIPAssociation_ec2Classic(t *testing.T) {
 
 func TestAccAWSEIPAssociation_spotInstance(t *testing.T) {
 	var a ec2.Address
-	rInt := acctest.RandInt()
+	rName := acctest.RandomWithPrefix("tf-acc-test")
 	resourceName := "aws_eip_association.test"
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -146,7 +146,7 @@ func TestAccAWSEIPAssociation_spotInstance(t *testing.T) {
 		CheckDestroy: testAccCheckAWSEIPAssociationDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAWSEIPAssociationConfig_spotInstance(rInt),
+				Config: testAccAWSEIPAssociationConfig_spotInstance(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAWSEIPExists("aws_eip.test", &a),
 					testAccCheckAWSEIPAssociationExists(resourceName, &a),
@@ -451,17 +451,15 @@ resource "aws_eip_association" "test" {
 }
 `
 
-func testAccAWSEIPAssociationConfig_spotInstance(rInt int) string {
-	return fmt.Sprintf(`
-%s
-
+func testAccAWSEIPAssociationConfig_spotInstance(rName string) string {
+	return testAccAWSSpotInstanceRequestConfig(rName) + fmt.Sprintf(`
 resource "aws_eip" "test" {}
 
 resource "aws_eip_association" "test" {
   allocation_id = "${aws_eip.test.id}"
-  instance_id   = "${aws_spot_instance_request.foo.spot_instance_id}"
+  instance_id   = "${aws_spot_instance_request.test.spot_instance_id}"
 }
-`, testAccAWSSpotInstanceRequestConfig(rInt))
+`)
 }
 
 const testAccAWSEIPAssociationConfig_instance = `
