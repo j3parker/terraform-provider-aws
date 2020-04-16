@@ -1,12 +1,11 @@
 package aws
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/service/ssm"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/customdiff"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -59,7 +58,6 @@ func resourceAwsSsmParameter() *schema.Resource {
 			},
 			"arn": {
 				Type:     schema.TypeString,
-				Optional: true,
 				Computed: true,
 			},
 			"key_id": {
@@ -98,12 +96,12 @@ func resourceAwsSsmParameter() *schema.Resource {
 }
 
 func resourceAwsSsmParameterRead(d *schema.ResourceData, meta interface{}) error {
-	ssmconn := meta.(*AWSClient).ssmconn
+	conn := meta.(*AWSClient).ssmconn
 	ignoreTagsConfig := meta.(*AWSClient).IgnoreTagsConfig
 
 	log.Printf("[DEBUG] Reading SSM Parameter: %s", d.Id())
 
-	resp, err := ssmconn.GetParameter(&ssm.GetParameterInput{
+	resp, err := conn.GetParameter(&ssm.GetParameterInput{
 		Name:           aws.String(d.Id()),
 		WithDecryption: aws.Bool(true),
 	})
@@ -132,7 +130,7 @@ func resourceAwsSsmParameterRead(d *schema.ResourceData, meta interface{}) error
 			},
 		},
 	}
-	describeResp, err := ssmconn.DescribeParameters(describeParamsInput)
+	describeResp, err := conn.DescribeParameters(describeParamsInput)
 	if err != nil {
 		return fmt.Errorf("error describing SSM parameter: %s", err)
 	}
@@ -151,9 +149,9 @@ func resourceAwsSsmParameterRead(d *schema.ResourceData, meta interface{}) error
 		d.Set("tier", detail.Tier)
 	}
 	d.Set("allowed_pattern", detail.AllowedPattern)
-	d.Set("policies", detail.Policies)
+	d.Set("policies", flattenAwsSsmParameter(detail.Policies))
 
-	tags, err := keyvaluetags.SsmListTags(ssmconn, name, ssm.ResourceTypeForTaggingParameter)
+	tags, err := keyvaluetags.SsmListTags(conn, name, ssm.ResourceTypeForTaggingParameter)
 
 	if err != nil {
 		return fmt.Errorf("error listing tags for SSM Parameter (%s): %s", name, err)
@@ -163,24 +161,17 @@ func resourceAwsSsmParameterRead(d *schema.ResourceData, meta interface{}) error
 		return fmt.Errorf("error setting tags: %s", err)
 	}
 
-	arn := arn.ARN{
-		Partition: meta.(*AWSClient).partition,
-		Region:    meta.(*AWSClient).region,
-		Service:   "ssm",
-		AccountID: meta.(*AWSClient).accountid,
-		Resource:  fmt.Sprintf("parameter/%s", strings.TrimPrefix(d.Id(), "/")),
-	}
-	d.Set("arn", arn.String())
+	d.Set("arn", param.ARN)
 
 	return nil
 }
 
 func resourceAwsSsmParameterDelete(d *schema.ResourceData, meta interface{}) error {
-	ssmconn := meta.(*AWSClient).ssmconn
+	conn := meta.(*AWSClient).ssmconn
 
 	log.Printf("[INFO] Deleting SSM Parameter: %s", d.Id())
 
-	_, err := ssmconn.DeleteParameter(&ssm.DeleteParameterInput{
+	_, err := conn.DeleteParameter(&ssm.DeleteParameterInput{
 		Name: aws.String(d.Get("name").(string)),
 	})
 	if err != nil {
@@ -191,7 +182,7 @@ func resourceAwsSsmParameterDelete(d *schema.ResourceData, meta interface{}) err
 }
 
 func resourceAwsSsmParameterPut(d *schema.ResourceData, meta interface{}) error {
-	ssmconn := meta.(*AWSClient).ssmconn
+	conn := meta.(*AWSClient).ssmconn
 
 	log.Printf("[INFO] Creating SSM Parameter: %s", d.Get("name").(string))
 
@@ -223,11 +214,11 @@ func resourceAwsSsmParameterPut(d *schema.ResourceData, meta interface{}) error 
 	}
 
 	log.Printf("[DEBUG] Waiting for SSM Parameter %v to be updated", d.Get("name"))
-	_, err := ssmconn.PutParameter(paramInput)
+	_, err := conn.PutParameter(paramInput)
 
 	if isAWSErr(err, "ValidationException", "Tier is not supported") {
 		paramInput.Tier = nil
-		_, err = ssmconn.PutParameter(paramInput)
+		_, err = conn.PutParameter(paramInput)
 	}
 
 	if err != nil {
@@ -238,7 +229,7 @@ func resourceAwsSsmParameterPut(d *schema.ResourceData, meta interface{}) error 
 	if d.HasChange("tags") {
 		o, n := d.GetChange("tags")
 
-		if err := keyvaluetags.SsmUpdateTags(ssmconn, name, ssm.ResourceTypeForTaggingParameter, o, n); err != nil {
+		if err := keyvaluetags.SsmUpdateTags(conn, name, ssm.ResourceTypeForTaggingParameter, o, n); err != nil {
 			return fmt.Errorf("error updating SSM Parameter (%s) tags: %s", name, err)
 		}
 	}
@@ -257,4 +248,20 @@ func shouldUpdateSsmParameter(d *schema.ResourceData) bool {
 	// Since the user has not specified a preference, obey lifecycle rules
 	// if it is not a new resource, otherwise overwrite should be set to false.
 	return !d.IsNewResource()
+}
+
+func flattenAwsSsmParameter(policies []*ssm.ParameterInlinePolicy) string {
+	if len(policies) == 0 {
+		return ""
+	}
+
+	jsonRes := make([]string, len(policies))
+
+	for _, policy := range policies {
+		jsonRes = append(jsonRes, aws.StringValue(policy.PolicyText))
+	}
+
+	policiesJson, _ := json.Marshal(jsonRes)
+
+	return string(policiesJson)
 }
