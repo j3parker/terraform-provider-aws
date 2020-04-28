@@ -34,6 +34,12 @@ func TestAccAWSSpotInstanceRequest_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "tags.%", "0"),
 				),
 			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"wait_for_fulfillment"},
+			},
 		},
 	})
 }
@@ -58,6 +64,12 @@ func TestAccAWSSpotInstanceRequest_withLaunchGroup(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "spot_request_state", "active"),
 					resource.TestCheckResourceAttr(resourceName, "launch_group", rName),
 				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"wait_for_fulfillment"},
 			},
 		},
 	})
@@ -84,6 +96,12 @@ func TestAccAWSSpotInstanceRequest_withBlockDuration(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "block_duration_minutes", "60"),
 				),
 			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"wait_for_fulfillment"},
+			},
 		},
 	})
 }
@@ -108,6 +126,12 @@ func TestAccAWSSpotInstanceRequest_vpc(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "spot_bid_status", "fulfilled"),
 					resource.TestCheckResourceAttr(resourceName, "spot_request_state", "active"),
 				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"wait_for_fulfillment"},
 			},
 		},
 	})
@@ -135,6 +159,12 @@ func TestAccAWSSpotInstanceRequest_validUntil(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "spot_request_state", "active"),
 				),
 			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"wait_for_fulfillment"},
+			},
 		},
 	})
 }
@@ -158,6 +188,12 @@ func TestAccAWSSpotInstanceRequest_withoutSpotPrice(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "spot_request_state", "active"),
 				),
 			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"wait_for_fulfillment"},
+			},
 		},
 	})
 }
@@ -179,6 +215,12 @@ func TestAccAWSSpotInstanceRequest_SubnetAndSGAndPublicIpAddress(t *testing.T) {
 					testAccCheckAWSSpotInstanceRequest_InstanceAttributes(&sir, rName),
 					resource.TestCheckResourceAttr(resourceName, "associate_public_ip_address", "true"),
 				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"wait_for_fulfillment"},
 			},
 		},
 	})
@@ -203,6 +245,12 @@ func TestAccAWSSpotInstanceRequest_NetworkInterfaceAttributes(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "associate_public_ip_address", "true"),
 				),
 			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"wait_for_fulfillment"},
+			},
 		},
 	})
 }
@@ -223,6 +271,12 @@ func TestAccAWSSpotInstanceRequest_getPasswordData(t *testing.T) {
 					testAccCheckAWSSpotInstanceRequestExists(resourceName, &sir),
 					resource.TestCheckResourceAttrSet(resourceName, "password_data"),
 				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"wait_for_fulfillment"},
 			},
 		},
 	})
@@ -496,6 +550,12 @@ func TestAccAWSSpotInstanceRequestInterruptStop(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "instance_interruption_behaviour", "stop"),
 				),
 			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"wait_for_fulfillment"},
+			},
 		},
 	})
 }
@@ -517,6 +577,12 @@ func TestAccAWSSpotInstanceRequestInterruptHibernate(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "spot_request_state", "active"),
 					resource.TestCheckResourceAttr(resourceName, "instance_interruption_behaviour", "hibernate"),
 				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"wait_for_fulfillment"},
 			},
 		},
 	})
