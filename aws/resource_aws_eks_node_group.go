@@ -176,6 +176,12 @@ func resourceAwsEksNodeGroup() *schema.Resource {
 				Optional: true,
 				Computed: true,
 			},
+			"force_update": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Computed: true,
+				Default:  false,
+			},
 		},
 	}
 }
@@ -370,11 +376,11 @@ func resourceAwsEksNodeGroupUpdate(d *schema.ResourceData, meta interface{}) err
 		}
 	}
 
-	if d.HasChange("release_version") || d.HasChange("version") {
+	if d.HasChanges("release_version", "version") {
 		input := &eks.UpdateNodegroupVersionInput{
 			ClientRequestToken: aws.String(resource.UniqueId()),
 			ClusterName:        aws.String(clusterName),
-			Force:              aws.Bool(false),
+			Force:              aws.Bool(d.Get("force_update").(bool)),
 			NodegroupName:      aws.String(nodeGroupName),
 		}
 
