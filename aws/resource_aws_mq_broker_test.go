@@ -817,6 +817,7 @@ func TestAccAWSMqBroker_disappears(t *testing.T) {
 }
 
 func TestAccAWSMqBroker_updateEngineVersion(t *testing.T) {
+	var broker mq.DescribeBrokerResponse
 	sgName := fmt.Sprintf("tf-acc-test-%s", acctest.RandString(5))
 	brokerName := fmt.Sprintf("tf-acc-test-%s", acctest.RandString(5))
 	resourceName := "aws_mq_broker.test"
@@ -829,14 +830,20 @@ func TestAccAWSMqBroker_updateEngineVersion(t *testing.T) {
 			{
 				Config: testAccMqBrokerConfig(sgName, brokerName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckAwsMqBrokerExists(resourceName),
+					testAccCheckAwsMqBrokerExists(resourceName, &broker),
 					resource.TestCheckResourceAttr(resourceName, "engine_version", "5.15.0"),
 				),
 			},
 			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"apply_immediately", "user"},
+			},
+			{
 				Config: testAccMqBrokerEngineVersionUpdateConfig(sgName, brokerName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckAwsMqBrokerExists(resourceName),
+					testAccCheckAwsMqBrokerExists(resourceName, &broker),
 					resource.TestCheckResourceAttr(resourceName, "engine_version", "5.15.9"),
 				),
 			},
