@@ -649,7 +649,7 @@ resource "aws_ssm_parameter" "test" {
    "Type":"Expiration",
    "Version":"1.0",
    "Attributes":{
-      "Timestamp":"2050-12-02T21:34:33.000Z"
+      "Timestamp":"2050-12-02T21:34:33Z"
    }
 }]
 EOF
@@ -671,7 +671,7 @@ resource "aws_ssm_parameter" "test" {
    "Type":"Expiration",
    "Version":"1.0",
    "Attributes":{
-      "Timestamp":"2050-12-02T21:34:33.000Z"
+      "Timestamp":"2050-12-02T21:34:33Z"
    }
 },
 {
