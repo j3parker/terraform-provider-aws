@@ -164,7 +164,7 @@ func testAccCheckAWSEc2TrafficMirrorFilterRuleExists(name string) resource.TestC
 
 		var exists bool
 		for _, rule := range ruleList {
-			if *rule.TrafficMirrorFilterRuleId == ruleId {
+			if aws.StringValue(rule.TrafficMirrorFilterRuleId) == ruleId {
 				exists = true
 				break
 			}
