@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
@@ -21,6 +22,10 @@ func resourceAwsEc2TrafficMirrorFilter() *schema.Resource {
 			State: schema.ImportStatePassthrough,
 		},
 		Schema: map[string]*schema.Schema{
+			"arn": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 			"description": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -59,7 +64,7 @@ func resourceAwsEc2TrafficMirrorFilterCreate(d *schema.ResourceData, meta interf
 		return fmt.Errorf("Error while creating traffic filter %s", err)
 	}
 
-	d.SetId(*out.TrafficMirrorFilter.TrafficMirrorFilterId)
+	d.SetId(aws.StringValue(out.TrafficMirrorFilter.TrafficMirrorFilterId))
 
 	if v, ok := d.GetOk("network_services"); ok {
 		input := &ec2.ModifyTrafficMirrorFilterNetworkServicesInput{
@@ -149,6 +154,16 @@ func resourceAwsEc2TrafficMirrorFilterRead(d *schema.ResourceData, meta interfac
 	if err := d.Set("network_services", aws.StringValueSlice(trafficMirrorFilter.NetworkServices)); err != nil {
 		return fmt.Errorf("error setting network_services for filter %v: %s", d.Id(), err)
 	}
+
+	arn := arn.ARN{
+		Partition: meta.(*AWSClient).partition,
+		Service:   "ec2",
+		Region:    meta.(*AWSClient).region,
+		AccountID: meta.(*AWSClient).accountid,
+		Resource:  fmt.Sprintf("traffic-mirror-filter/%s", d.Id()),
+	}.String()
+
+	d.Set("arn", arn)
 
 	return nil
 }
