@@ -82,14 +82,14 @@ resource "aws_vpc" "test" {
 }
 
 resource "aws_security_group" "test" {
-  vpc_id = "${aws_vpc.test.id}"
-  name   = %[1]q
+  vpc_id      = "${aws_vpc.test.id}"
+  name        = %[1]q
+  description = "sg description"
+
 
   tags = {
     Name = %[1]q
   }
-
-  description = "sg description"
 }
 
 data "aws_security_group" "by_id" {
