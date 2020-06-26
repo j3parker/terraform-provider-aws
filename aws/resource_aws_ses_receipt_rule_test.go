@@ -264,7 +264,8 @@ func testAccCheckAwsSESReceiptRuleOrder(n string) resource.TestCheckFunc {
 
 		if len(response.Rules) != 2 {
 			return fmt.Errorf("Number of rules (%d) was not equal to 2", len(response.Rules))
-		} else if *response.Rules[0].Name != "first" || *response.Rules[1].Name != "second" {
+		} else if aws.StringValue(response.Rules[0].Name) != "first" ||
+			aws.StringValue(response.Rules[1].Name) != "second" {
 			return fmt.Errorf("Order of rules (%v) was incorrect", response.Rules)
 		}
 
@@ -380,7 +381,7 @@ resource "aws_ses_receipt_rule_set" "test" {
 }
 
 resource "aws_ses_receipt_rule" "test" {
-  name          = %[1]q
+  name          = "second"
   rule_set_name = "${aws_ses_receipt_rule_set.test.rule_set_name}"
   after         = "${aws_ses_receipt_rule.test1.name}"
 }
