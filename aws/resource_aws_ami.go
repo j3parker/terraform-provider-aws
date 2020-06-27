@@ -225,6 +225,38 @@ func resourceAwsAmi() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
+			"usage_operation": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"platform_details": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"image_owner_alias": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"image_type": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"hypervisor": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"owner_id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"platform": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"public": {
+				Type:     schema.TypeBool,
+				Computed: true,
+			},
 		},
 	}
 }
@@ -296,7 +328,7 @@ func resourceAwsAmiCreate(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
-	id := *res.ImageId
+	id := aws.StringValue(res.ImageId)
 	d.SetId(id)
 
 	if v := d.Get("tags").(map[string]interface{}); len(v) > 0 {
@@ -355,7 +387,7 @@ func resourceAwsAmiRead(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	image := res.Images[0]
-	state := *image.State
+	state := aws.StringValue(image.State)
 
 	if state == ec2.ImageStatePending {
 		// This could happen if a user manually adds an image we didn't create
@@ -391,6 +423,18 @@ func resourceAwsAmiRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("sriov_net_support", image.SriovNetSupport)
 	d.Set("virtualization_type", image.VirtualizationType)
 	d.Set("ena_support", image.EnaSupport)
+	d.Set("usage_operation", image.UsageOperation)
+	d.Set("platform_details", image.PlatformDetails)
+	d.Set("hypervisor", image.Hypervisor)
+	d.Set("image_type", image.ImageType)
+	d.Set("owner_id", image.OwnerId)
+	d.Set("public", image.Public)
+	if image.ImageOwnerAlias != nil {
+		d.Set("image_owner_alias", image.ImageOwnerAlias)
+	}
+	if image.Platform != nil {
+		d.Set("platform", image.Platform)
+	}
 
 	imageArn := arn.ARN{
 		Partition: meta.(*AWSClient).partition,
@@ -407,25 +451,25 @@ func resourceAwsAmiRead(d *schema.ResourceData, meta interface{}) error {
 	for _, blockDev := range image.BlockDeviceMappings {
 		if blockDev.Ebs != nil {
 			ebsBlockDev := map[string]interface{}{
-				"device_name":           *blockDev.DeviceName,
-				"delete_on_termination": *blockDev.Ebs.DeleteOnTermination,
-				"encrypted":             *blockDev.Ebs.Encrypted,
+				"device_name":           aws.StringValue(blockDev.DeviceName),
+				"delete_on_termination": aws.BoolValue(blockDev.Ebs.DeleteOnTermination),
+				"encrypted":             aws.BoolValue(blockDev.Ebs.Encrypted),
 				"iops":                  0,
-				"volume_size":           int(*blockDev.Ebs.VolumeSize),
-				"volume_type":           *blockDev.Ebs.VolumeType,
+				"volume_size":           int(aws.Int64Value(blockDev.Ebs.VolumeSize)),
+				"volume_type":           aws.StringValue(blockDev.Ebs.VolumeType),
 			}
 			if blockDev.Ebs.Iops != nil {
-				ebsBlockDev["iops"] = int(*blockDev.Ebs.Iops)
+				ebsBlockDev["iops"] = int(aws.Int64Value(blockDev.Ebs.Iops))
 			}
 			// The snapshot ID might not be set.
 			if blockDev.Ebs.SnapshotId != nil {
-				ebsBlockDev["snapshot_id"] = *blockDev.Ebs.SnapshotId
+				ebsBlockDev["snapshot_id"] = aws.StringValue(blockDev.Ebs.SnapshotId)
 			}
 			ebsBlockDevs = append(ebsBlockDevs, ebsBlockDev)
 		} else {
 			ephemeralBlockDevs = append(ephemeralBlockDevs, map[string]interface{}{
-				"device_name":  *blockDev.DeviceName,
-				"virtual_name": *blockDev.VirtualName,
+				"device_name":  aws.StringValue(blockDev.DeviceName),
+				"virtual_name": aws.StringValue(blockDev.VirtualName),
 			})
 		}
 	}
@@ -533,7 +577,7 @@ func AMIStateRefreshFunc(client *ec2.EC2, id string) resource.StateRefreshFunc {
 		}
 
 		// AMI is valid, so return it's state
-		return resp.Images[0], *resp.Images[0].State, nil
+		return resp.Images[0], aws.StringValue(resp.Images[0].State), nil
 	}
 }
 

@@ -35,6 +35,11 @@ func TestAccAWSAMI_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "virtualization_type", "hvm"),
 					resource.TestMatchResourceAttr(resourceName, "root_snapshot_id", regexp.MustCompile("^snap-")),
 					resource.TestCheckResourceAttr(resourceName, "tags.%", "0"),
+					resource.TestCheckResourceAttr(resourceName, "usage_operation", "RunInstances"),
+					resource.TestCheckResourceAttr(resourceName, "platform_details", "Linux/UNIX"),
+					resource.TestCheckResourceAttr(resourceName, "image_type", "machine"),
+					resource.TestCheckResourceAttr(resourceName, "hypervisor", "xen"),
+					testAccCheckResourceAttrAccountID(resourceName, "owner_id"),
 				),
 			},
 			{
@@ -221,7 +226,8 @@ func testAccCheckAmiDestroy(s *terraform.State) error {
 
 		if len(resp.Images) > 0 {
 			state := resp.Images[0].State
-			return fmt.Errorf("AMI %s still exists in the state: %s.", *resp.Images[0].ImageId, *state)
+			return fmt.Errorf("AMI %s still exists in the state: %s.", aws.StringValue(resp.Images[0].ImageId),
+				aws.StringValue(state))
 		}
 	}
 	return nil
@@ -274,7 +280,7 @@ func testAccCheckAmiBlockDevice(ami *ec2.Image, blockDevice *ec2.BlockDeviceMapp
 	return func(s *terraform.State) error {
 		devices := make(map[string]*ec2.BlockDeviceMapping)
 		for _, device := range ami.BlockDeviceMappings {
-			devices[*device.DeviceName] = device
+			devices[aws.StringValue(device.DeviceName)] = device
 		}
 
 		// Check if the block device exists
@@ -292,34 +298,34 @@ func testAccCheckAmiEbsBlockDevice(bd *ec2.BlockDeviceMapping, ed *ec2.EbsBlockD
 		// Test for things that ed has, don't care about unset values
 		cd := bd.Ebs
 		if ed.VolumeType != nil {
-			if *ed.VolumeType != *cd.VolumeType {
+			if aws.StringValue(ed.VolumeType) != aws.StringValue(cd.VolumeType) {
 				return fmt.Errorf("Volume type mismatch. Expected: %s Got: %s",
-					*ed.VolumeType, *cd.VolumeType)
+					aws.StringValue(ed.VolumeType), aws.StringValue(cd.VolumeType))
 			}
 		}
 		if ed.DeleteOnTermination != nil {
-			if *ed.DeleteOnTermination != *cd.DeleteOnTermination {
+			if aws.BoolValue(ed.DeleteOnTermination) != aws.BoolValue(cd.DeleteOnTermination) {
 				return fmt.Errorf("DeleteOnTermination mismatch. Expected: %t Got: %t",
-					*ed.DeleteOnTermination, *cd.DeleteOnTermination)
+					aws.BoolValue(ed.DeleteOnTermination), aws.BoolValue(cd.DeleteOnTermination))
 			}
 		}
 		if ed.Encrypted != nil {
-			if *ed.Encrypted != *cd.Encrypted {
+			if aws.BoolValue(ed.Encrypted) != aws.BoolValue(cd.Encrypted) {
 				return fmt.Errorf("Encrypted mismatch. Expected: %t Got: %t",
-					*ed.Encrypted, *cd.Encrypted)
+					aws.BoolValue(ed.Encrypted), aws.BoolValue(cd.Encrypted))
 			}
 		}
 		// Integer defaults need to not be `0` so we don't get a panic
-		if ed.Iops != nil && *ed.Iops != 0 {
-			if *ed.Iops != *cd.Iops {
+		if ed.Iops != nil && aws.Int64Value(ed.Iops) != 0 {
+			if aws.Int64Value(ed.Iops) != aws.Int64Value(cd.Iops) {
 				return fmt.Errorf("IOPS mismatch. Expected: %d Got: %d",
-					*ed.Iops, *cd.Iops)
+					aws.Int64Value(ed.Iops), aws.Int64Value(cd.Iops))
 			}
 		}
-		if ed.VolumeSize != nil && *ed.VolumeSize != 0 {
-			if *ed.VolumeSize != *cd.VolumeSize {
+		if ed.VolumeSize != nil && aws.Int64Value(ed.VolumeSize) != 0 {
+			if aws.Int64Value(ed.VolumeSize) != aws.Int64Value(cd.VolumeSize) {
 				return fmt.Errorf("Volume Size mismatch. Expected: %d Got: %d",
-					*ed.VolumeSize, *cd.VolumeSize)
+					aws.Int64Value(ed.VolumeSize), aws.Int64Value(cd.VolumeSize))
 			}
 		}
 
