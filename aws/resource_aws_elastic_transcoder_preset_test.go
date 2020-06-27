@@ -2,6 +2,7 @@ package aws
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -25,6 +26,7 @@ func TestAccAWSElasticTranscoderPreset_basic(t *testing.T) {
 				Config: testAccAwsElasticTranscoderPresetConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckElasticTranscoderPresetExists(resourceName, &preset),
+					testAccMatchResourceAttrRegionalARN(resourceName, "arn", "elastictranscoder", regexp.MustCompile(`preset/.+`)),
 				),
 			},
 			{
@@ -50,7 +52,7 @@ func TestAccAWSElasticTranscoderPreset_disappears(t *testing.T) {
 				Config: testAccAwsElasticTranscoderPresetConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckElasticTranscoderPresetExists(resourceName, &preset),
-					testAccCheckElasticTranscoderPresetDisappears(&preset),
+					testAccCheckResourceDisappears(testAccProvider, resourceAwsElasticTranscoderPreset(), resourceName),
 				),
 				ExpectNonEmptyPlan: true,
 			},
@@ -213,17 +215,6 @@ func testAccCheckElasticTranscoderPresetExists(name string, preset *elastictrans
 	}
 }
 
-func testAccCheckElasticTranscoderPresetDisappears(preset *elastictranscoder.Preset) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-		conn := testAccProvider.Meta().(*AWSClient).elastictranscoderconn
-		_, err := conn.DeletePreset(&elastictranscoder.DeletePresetInput{
-			Id: preset.Id,
-		})
-
-		return err
-	}
-}
-
 func testAccCheckElasticTranscoderPresetDestroy(s *terraform.State) error {
 	conn := testAccProvider.Meta().(*AWSClient).elastictranscoderconn
 
@@ -237,7 +228,7 @@ func testAccCheckElasticTranscoderPresetDestroy(s *terraform.State) error {
 		})
 
 		if err == nil {
-			if out.Preset != nil && *out.Preset.Id == rs.Primary.ID {
+			if out.Preset != nil && aws.StringValue(out.Preset.Id) == rs.Primary.ID {
 				return fmt.Errorf("Elastic Transcoder Preset still exists")
 			}
 		}
