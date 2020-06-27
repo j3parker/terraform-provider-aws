@@ -24,6 +24,13 @@ The following arguments are supported:
 
 * `name` - (Required) The name of the configuration set
 
+## Attributes Reference
+
+In addition to the arguments, which are exported, the following attributes are exported:
+
+* `id` - The SES configuration set name.
+* `arn` - The SES configuration set ARN.
+
 ## Import
 
 SES Configuration Sets can be imported using their `name`, e.g.

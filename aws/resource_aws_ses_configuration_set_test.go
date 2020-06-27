@@ -68,7 +68,8 @@ func testSweepSesConfigurationSets(region string) error {
 }
 
 func TestAccAWSSESConfigurationSet_basic(t *testing.T) {
-	var escRandomInteger = acctest.RandInt()
+	rName := acctest.RandomWithPrefix("tf-acc-test")
+	resourceName := "aws_ses_configuration_set.test"
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -79,13 +80,15 @@ func TestAccAWSSESConfigurationSet_basic(t *testing.T) {
 		CheckDestroy: testAccCheckSESConfigurationSetDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAWSSESConfigurationSetConfig(escRandomInteger),
+				Config: testAccAWSSESConfigurationSetConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckAwsSESConfigurationSetExists("aws_ses_configuration_set.test"),
+					testAccCheckAwsSESConfigurationSetExists(resourceName),
+					testAccCheckResourceAttrRegionalARN(resourceName, "arn", "ses", fmt.Sprintf("configuration-set/%s", rName)),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
 				),
 			},
 			{
-				ResourceName:      "aws_ses_configuration_set.test",
+				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
 			},
@@ -144,10 +147,10 @@ func testAccCheckSESConfigurationSetDestroy(s *terraform.State) error {
 	return nil
 }
 
-func testAccAWSSESConfigurationSetConfig(escRandomInteger int) string {
+func testAccAWSSESConfigurationSetConfig(rName string) string {
 	return fmt.Sprintf(`
 resource "aws_ses_configuration_set" "test" {
-    name = "some-configuration-set-%d"
+    name = %[1]q
 }
-`, escRandomInteger)
+`, rName)
 }

@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/service/ses"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
@@ -19,6 +20,10 @@ func resourceAwsSesConfigurationSet() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
+			"arn": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
@@ -68,6 +73,15 @@ func resourceAwsSesConfigurationSetRead(d *schema.ResourceData, meta interface{}
 	}
 
 	d.Set("name", aws.StringValue(response.ConfigurationSet.Name))
+
+	arn := arn.ARN{
+		Partition: meta.(*AWSClient).partition,
+		Service:   "ses",
+		Region:    meta.(*AWSClient).region,
+		AccountID: meta.(*AWSClient).accountid,
+		Resource:  fmt.Sprintf("configuration-set/%s", d.Id()),
+	}.String()
+	d.Set("arn", arn)
 
 	return nil
 }
