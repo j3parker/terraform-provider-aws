@@ -9,10 +9,18 @@ import (
 	"strings"
 	"time"
 
+<<<<<<< HEAD
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/structure"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+=======
+	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/structure"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
+	"github.com/terraform-providers/terraform-provider-aws/aws/internal/service/sns/waiter"
+>>>>>>> e16fcc21c... move waiter to its own package
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
@@ -204,7 +212,7 @@ func resourceAwsSnsTopicSubscriptionDelete(d *schema.ResourceData, meta interfac
 		SubscriptionArn: aws.String(d.Id()),
 	})
 
-	if err := waitForSnsTopicSubscriptionDelete(conn, d.Id()); err != nil {
+	if _, err := waiter.SnsTopicSubscriptionDeleted(conn, d.Id()); err != nil {
 		return fmt.Errorf("error waiting for SNS topic subscription (%s) deletion: %s", d.Id(), err)
 	}
 
@@ -482,41 +490,4 @@ func suppressEquivalentSnsTopicSubscriptionDeliveryPolicy(k, old, new string, d 
 	}
 
 	return jsonBytesEqual(ob.Bytes(), nb.Bytes())
-}
-
-func waitForSnsTopicSubscriptionDelete(conn *sns.SNS, subscriptionArn string) error {
-	stateConf := &resource.StateChangeConf{
-		Pending: []string{"available"},
-		Target:  []string{},
-		Refresh: SnsTopicSubscriptionRefreshFunc(conn, subscriptionArn),
-		Timeout: 5 * time.Minute,
-	}
-
-	log.Printf("[DEBUG] Waiting for SNS topic sunscription (%s) deletion", subscriptionArn)
-	_, err := stateConf.WaitForState()
-
-	return err
-}
-
-func SnsTopicSubscriptionRefreshFunc(conn *sns.SNS, subscriptionArn string) resource.StateRefreshFunc {
-	return func() (interface{}, string, error) {
-
-		output, err := conn.GetSubscriptionAttributes(&sns.GetSubscriptionAttributesInput{
-			SubscriptionArn: aws.String(subscriptionArn),
-		})
-
-		if isAWSErr(err, sns.ErrCodeNotFoundException, "") {
-			return nil, "", nil
-		}
-
-		if err != nil {
-			return nil, "", fmt.Errorf("error reading SNS topic subscription (%s): %s", subscriptionArn, err)
-		}
-
-		if output == nil || len(output.Attributes) == 0 {
-			return nil, "", nil
-		}
-
-		return output, "available", nil
-	}
 }
