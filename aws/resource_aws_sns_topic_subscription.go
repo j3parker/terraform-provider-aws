@@ -64,9 +64,10 @@ func resourceAwsSnsTopicSubscription() *schema.Resource {
 				Default:  1,
 			},
 			"topic_arn": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
+				Type:         schema.TypeString,
+				Required:     true,
+				ForceNew:     true,
+				ValidateFunc: validateArn,
 			},
 			"delivery_policy": {
 				Type:             schema.TypeString,
@@ -93,14 +94,18 @@ func resourceAwsSnsTopicSubscription() *schema.Resource {
 					return json
 				},
 			},
+			"owner": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 		},
 	}
 }
 
 func resourceAwsSnsTopicSubscriptionCreate(d *schema.ResourceData, meta interface{}) error {
-	snsconn := meta.(*AWSClient).snsconn
+	conn := meta.(*AWSClient).snsconn
 
-	output, err := subscribeToSNSTopic(d, snsconn)
+	output, err := subscribeToSNSTopic(d, conn)
 
 	if err != nil {
 		return err
@@ -111,8 +116,8 @@ func resourceAwsSnsTopicSubscriptionCreate(d *schema.ResourceData, meta interfac
 		return nil
 	}
 
-	log.Printf("New subscription ARN: %s", *output.SubscriptionArn)
-	d.SetId(*output.SubscriptionArn)
+	log.Printf("New subscription ARN: %s", aws.StringValue(output.SubscriptionArn))
+	d.SetId(aws.StringValue(output.SubscriptionArn))
 
 	// Write the ARN to the 'arn' field for export
 	d.Set("arn", output.SubscriptionArn)
@@ -121,10 +126,10 @@ func resourceAwsSnsTopicSubscriptionCreate(d *schema.ResourceData, meta interfac
 }
 
 func resourceAwsSnsTopicSubscriptionUpdate(d *schema.ResourceData, meta interface{}) error {
-	snsconn := meta.(*AWSClient).snsconn
+	conn := meta.(*AWSClient).snsconn
 
 	if d.HasChange("raw_message_delivery") {
-		if err := snsSubscriptionAttributeUpdate(snsconn, d.Id(), "RawMessageDelivery", fmt.Sprintf("%t", d.Get("raw_message_delivery").(bool))); err != nil {
+		if err := snsSubscriptionAttributeUpdate(conn, d.Id(), "RawMessageDelivery", fmt.Sprintf("%t", d.Get("raw_message_delivery").(bool))); err != nil {
 			return err
 		}
 	}
@@ -137,13 +142,13 @@ func resourceAwsSnsTopicSubscriptionUpdate(d *schema.ResourceData, meta interfac
 			filterPolicy = "{}"
 		}
 
-		if err := snsSubscriptionAttributeUpdate(snsconn, d.Id(), "FilterPolicy", filterPolicy); err != nil {
+		if err := snsSubscriptionAttributeUpdate(conn, d.Id(), "FilterPolicy", filterPolicy); err != nil {
 			return err
 		}
 	}
 
 	if d.HasChange("delivery_policy") {
-		if err := snsSubscriptionAttributeUpdate(snsconn, d.Id(), "DeliveryPolicy", d.Get("delivery_policy").(string)); err != nil {
+		if err := snsSubscriptionAttributeUpdate(conn, d.Id(), "DeliveryPolicy", d.Get("delivery_policy").(string)); err != nil {
 			return err
 		}
 	}
@@ -152,11 +157,11 @@ func resourceAwsSnsTopicSubscriptionUpdate(d *schema.ResourceData, meta interfac
 }
 
 func resourceAwsSnsTopicSubscriptionRead(d *schema.ResourceData, meta interface{}) error {
-	snsconn := meta.(*AWSClient).snsconn
+	conn := meta.(*AWSClient).snsconn
 
 	log.Printf("[DEBUG] Loading subscription %s", d.Id())
 
-	attributeOutput, err := snsconn.GetSubscriptionAttributes(&sns.GetSubscriptionAttributesInput{
+	attributeOutput, err := conn.GetSubscriptionAttributes(&sns.GetSubscriptionAttributesInput{
 		SubscriptionArn: aws.String(d.Id()),
 	})
 
@@ -179,6 +184,7 @@ func resourceAwsSnsTopicSubscriptionRead(d *schema.ResourceData, meta interface{
 	d.Set("endpoint", attributeOutput.Attributes["Endpoint"])
 	d.Set("filter_policy", attributeOutput.Attributes["FilterPolicy"])
 	d.Set("protocol", attributeOutput.Attributes["Protocol"])
+	d.Set("owner", attributeOutput.Attributes["Owner"])
 
 	d.Set("raw_message_delivery", false)
 	if v, ok := attributeOutput.Attributes["RawMessageDelivery"]; ok && aws.StringValue(v) == "true" {
@@ -191,12 +197,16 @@ func resourceAwsSnsTopicSubscriptionRead(d *schema.ResourceData, meta interface{
 }
 
 func resourceAwsSnsTopicSubscriptionDelete(d *schema.ResourceData, meta interface{}) error {
-	snsconn := meta.(*AWSClient).snsconn
+	conn := meta.(*AWSClient).snsconn
 
 	log.Printf("[DEBUG] SNS delete topic subscription: %s", d.Id())
-	_, err := snsconn.Unsubscribe(&sns.UnsubscribeInput{
+	_, err := conn.Unsubscribe(&sns.UnsubscribeInput{
 		SubscriptionArn: aws.String(d.Id()),
 	})
+
+	if err := waitForSnsTopicSubscriptionDelete(conn, d.Id()); err != nil {
+		return fmt.Errorf("error waiting for SNS topic subscription (%s) deletion: %s", d.Id(), err)
+	}
 
 	return err
 }
@@ -233,11 +243,11 @@ func subscribeToSNSTopic(d *schema.ResourceData, snsconn *sns.SNS) (output *sns.
 	confirmation_timeout_in_minutes := d.Get("confirmation_timeout_in_minutes").(int)
 	attributes := getResourceAttributes(d)
 
-	if strings.Contains(protocol, "http") && !endpoint_auto_confirms {
+	if strings.Contains(protocol, "http") && !endpointAutoConfirms {
 		return nil, fmt.Errorf("Protocol http/https is only supported for endpoints which auto confirms!")
 	}
 
-	log.Printf("[DEBUG] SNS create topic subscription: %s (%s) @ '%s'", endpoint, protocol, topic_arn)
+	log.Printf("[DEBUG] SNS create topic subscription: %s (%s) @ '%s'", endpoint, protocol, topicArn)
 
 	req := &sns.SubscribeInput{
 		Protocol:   aws.String(protocol),
@@ -246,20 +256,21 @@ func subscribeToSNSTopic(d *schema.ResourceData, snsconn *sns.SNS) (output *sns.
 		Attributes: attributes,
 	}
 
-	output, err = snsconn.Subscribe(req)
+	output, err = conn.Subscribe(req)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating SNS topic subscription: %s", err)
 	}
 
-	log.Printf("[DEBUG] Finished subscribing to topic %s with subscription arn %s", topic_arn, *output.SubscriptionArn)
+	log.Printf("[DEBUG] Finished subscribing to topic %s with subscription arn %s", topicArn,
+		aws.StringValue(output.SubscriptionArn))
 
 	if strings.Contains(protocol, "http") && subscriptionHasPendingConfirmation(output.SubscriptionArn) {
 
-		log.Printf("[DEBUG] SNS create topic subscription is pending so fetching the subscription list for topic : %s (%s) @ '%s'", endpoint, protocol, topic_arn)
+		log.Printf("[DEBUG] SNS create topic subscription is pending so fetching the subscription list for topic : %s (%s) @ '%s'", endpoint, protocol, topicArn)
 
-		err = resource.Retry(time.Duration(confirmation_timeout_in_minutes)*time.Minute, func() *resource.RetryError {
+		err = resource.Retry(time.Duration(confirmationTimeoutInMinutes)*time.Minute, func() *resource.RetryError {
 
-			subscription, err := findSubscriptionByNonID(d, snsconn)
+			subscription, err := findSubscriptionByNonID(d, conn)
 
 			if err != nil {
 				return resource.NonRetryableError(err)
@@ -275,7 +286,7 @@ func subscribeToSNSTopic(d *schema.ResourceData, snsconn *sns.SNS) (output *sns.
 
 		if isResourceTimeoutError(err) {
 			var subscription *sns.Subscription
-			subscription, err = findSubscriptionByNonID(d, snsconn)
+			subscription, err = findSubscriptionByNonID(d, conn)
 
 			if subscription != nil {
 				output.SubscriptionArn = subscription.SubscriptionArn
@@ -287,7 +298,7 @@ func subscribeToSNSTopic(d *schema.ResourceData, snsconn *sns.SNS) (output *sns.
 		}
 	}
 
-	log.Printf("[DEBUG] Created new subscription! %s", *output.SubscriptionArn)
+	log.Printf("[DEBUG] Created new subscription! %s", aws.StringValue(output.SubscriptionArn))
 	return output, nil
 }
 
@@ -368,13 +379,13 @@ func obfuscateEndpoint(endpoint string) string {
 	return obfuscatedEndpoint
 }
 
-func snsSubscriptionAttributeUpdate(snsconn *sns.SNS, subscriptionArn, attributeName, attributeValue string) error {
+func snsSubscriptionAttributeUpdate(conn *sns.SNS, subscriptionArn, attributeName, attributeValue string) error {
 	req := &sns.SetSubscriptionAttributesInput{
 		SubscriptionArn: aws.String(subscriptionArn),
 		AttributeName:   aws.String(attributeName),
 		AttributeValue:  aws.String(attributeValue),
 	}
-	_, err := snsconn.SetSubscriptionAttributes(req)
+	_, err := conn.SetSubscriptionAttributes(req)
 
 	if err != nil {
 		return fmt.Errorf("error setting subscription (%s) attribute (%s): %s", subscriptionArn, attributeName, err)
@@ -471,4 +482,41 @@ func suppressEquivalentSnsTopicSubscriptionDeliveryPolicy(k, old, new string, d 
 	}
 
 	return jsonBytesEqual(ob.Bytes(), nb.Bytes())
+}
+
+func waitForSnsTopicSubscriptionDelete(conn *sns.SNS, subscriptionArn string) error {
+	stateConf := &resource.StateChangeConf{
+		Pending: []string{"available"},
+		Target:  []string{},
+		Refresh: SnsTopicSubscriptionRefreshFunc(conn, subscriptionArn),
+		Timeout: 5 * time.Minute,
+	}
+
+	log.Printf("[DEBUG] Waiting for SNS topic sunscription (%s) deletion", subscriptionArn)
+	_, err := stateConf.WaitForState()
+
+	return err
+}
+
+func SnsTopicSubscriptionRefreshFunc(conn *sns.SNS, subscriptionArn string) resource.StateRefreshFunc {
+	return func() (interface{}, string, error) {
+
+		output, err := conn.GetSubscriptionAttributes(&sns.GetSubscriptionAttributesInput{
+			SubscriptionArn: aws.String(subscriptionArn),
+		})
+
+		if isAWSErr(err, sns.ErrCodeNotFoundException, "") {
+			return nil, "", nil
+		}
+
+		if err != nil {
+			return nil, "", fmt.Errorf("error reading SNS topic subscription (%s): %s", subscriptionArn, err)
+		}
+
+		if output == nil || len(output.Attributes) == 0 {
+			return nil, "", nil
+		}
+
+		return output, "available", nil
+	}
 }
