@@ -16,10 +16,6 @@ func SnsTopicSubscriptionStatus(conn *sns.SNS, subscriptionArn string) resource.
 			SubscriptionArn: aws.String(subscriptionArn),
 		})
 
-		if isAWSErr(err, sns.ErrCodeNotFoundException, "") {
-			return nil, "", nil
-		}
-
 		if err != nil {
 			return nil, "", fmt.Errorf("error reading SNS topic subscription (%s): %s", subscriptionArn, err)
 		}
