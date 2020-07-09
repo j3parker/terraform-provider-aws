@@ -279,6 +279,7 @@ In addition to all arguments above, the following attributes are exported:
 * `protocol` - The protocol being used
 * `endpoint` - The full endpoint to send data to (SQS ARN, HTTP(S) URL, Application ARN, SMS number, etc.)
 * `arn` - The ARN of the subscription stored as a more user-friendly property
+* `owner` - The AWS Account ID of the SNS topic owner
 
 ## Import
 
