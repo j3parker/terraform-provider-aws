@@ -96,14 +96,14 @@ func testSweepMqBrokers(region string) error {
 	log.Printf("[DEBUG] %d MQ brokers found", len(resp.BrokerSummaries))
 
 	for _, bs := range resp.BrokerSummaries {
-		log.Printf("[INFO] Deleting MQ broker %s", *bs.BrokerId)
+		log.Printf("[INFO] Deleting MQ broker %s", aws.StringValue(bs.BrokerId))
 		_, err := conn.DeleteBroker(&mq.DeleteBrokerInput{
 			BrokerId: bs.BrokerId,
 		})
 		if err != nil {
 			return err
 		}
-		err = waitForMqBrokerDeletion(conn, *bs.BrokerId)
+		err = waitForMqBrokerDeletion(conn, aws.StringValue(bs.BrokerId))
 		if err != nil {
 			return err
 		}
