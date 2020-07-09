@@ -1,8 +1,6 @@
 package waiter
 
 import (
-	"fmt"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
@@ -17,7 +15,7 @@ func SnsTopicSubscriptionStatus(conn *sns.SNS, subscriptionArn string) resource.
 		})
 
 		if err != nil {
-			return nil, "", fmt.Errorf("error reading SNS topic subscription (%s): %s", subscriptionArn, err)
+			return nil, "", err
 		}
 
 		if output == nil || len(output.Attributes) == 0 {

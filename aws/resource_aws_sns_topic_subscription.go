@@ -213,7 +213,7 @@ func resourceAwsSnsTopicSubscriptionDelete(d *schema.ResourceData, meta interfac
 	})
 
 	if _, err := waiter.SnsTopicSubscriptionDeleted(conn, d.Id()); err != nil {
-		if isAWSErr(err, sfn.ErrCodeStateMachineDoesNotExist, "") {
+		if isAWSErr(err, sns.ErrCodeNotFoundException, "") {
 			return nil
 		}
 		return fmt.Errorf("error waiting for SNS topic subscription (%s) deletion: %s", d.Id(), err)
