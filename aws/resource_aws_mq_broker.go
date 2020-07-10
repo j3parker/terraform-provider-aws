@@ -209,7 +209,6 @@ func resourceAwsMqBroker() *schema.Resource {
 								Type:         schema.TypeString,
 								ValidateFunc: validation.StringLenBetween(2, 100),
 							},
-							Set:      schema.HashString,
 							Optional: true,
 						},
 						"password": {
