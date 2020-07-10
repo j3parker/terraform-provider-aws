@@ -543,7 +543,7 @@ func waitForMqBrokerDeletion(conn *mq.MQ, id string) error {
 				BrokerId: aws.String(id),
 			})
 			if err != nil {
-				if isAWSErr(err, "NotFoundException", "") {
+				if isAWSErr(err, mq.ErrCodeNotFoundException, "") {
 					return 42, "", nil
 				}
 				return 42, "", err
