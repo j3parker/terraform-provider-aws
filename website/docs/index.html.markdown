@@ -320,6 +320,7 @@ for more information about connecting to alternate AWS endpoints or AWS compatib
     - [`aws_ssm_document` resource](/docs/providers/aws/r/ssm_document.html)
     - [`aws_ssm_parameter` data source](/docs/providers/aws/d/ssm_parameter.html)
     - [`aws_ssm_parameter` resource](/docs/providers/aws/r/ssm_parameter.html)
+    - [`aws_synthetics_canary` resource](/docs/providers/aws/r/synthetics_canary.html)    
     - [`aws_vpc` data source](/docs/providers/aws/d/vpc.html)
     - [`aws_vpc` resource](/docs/providers/aws/r/vpc.html)
     - [`aws_vpc_dhcp_options` data source](/docs/providers/aws/d/vpc_dhcp_options.html)
