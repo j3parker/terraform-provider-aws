@@ -2,11 +2,9 @@ package aws
 
 import (
 	"fmt"
-	"regexp"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/apigateway"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
@@ -15,7 +13,7 @@ import (
 
 func TestAccAWSAPIGatewayMethod_basic(t *testing.T) {
 	var conf apigateway.Method
-	rInt := acctest.RandInt()
+	rName := acctest.RandomWithPrefix("tf-acc-test")
 	resourceName := "aws_api_gateway_method.test"
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -24,7 +22,7 @@ func TestAccAWSAPIGatewayMethod_basic(t *testing.T) {
 		CheckDestroy: testAccCheckAWSAPIGatewayMethodDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAWSAPIGatewayMethodConfig(rInt),
+				Config: testAccAWSAPIGatewayMethodConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAWSAPIGatewayMethodExists(resourceName, &conf),
 					testAccCheckAWSAPIGatewayMethodAttributes(&conf),
@@ -41,7 +39,7 @@ func TestAccAWSAPIGatewayMethod_basic(t *testing.T) {
 			},
 
 			{
-				Config: testAccAWSAPIGatewayMethodConfigUpdate(rInt),
+				Config: testAccAWSAPIGatewayMethodConfigUpdate(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAWSAPIGatewayMethodExists(resourceName, &conf),
 					testAccCheckAWSAPIGatewayMethodAttributesUpdate(&conf),
@@ -53,7 +51,7 @@ func TestAccAWSAPIGatewayMethod_basic(t *testing.T) {
 
 func TestAccAWSAPIGatewayMethod_customauthorizer(t *testing.T) {
 	var conf apigateway.Method
-	rInt := acctest.RandInt()
+	rName := acctest.RandomWithPrefix("tf-acc-test")
 	resourceName := "aws_api_gateway_method.test"
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -62,13 +60,13 @@ func TestAccAWSAPIGatewayMethod_customauthorizer(t *testing.T) {
 		CheckDestroy: testAccCheckAWSAPIGatewayMethodDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAWSAPIGatewayMethodConfigWithCustomAuthorizer(rInt),
+				Config: testAccAWSAPIGatewayMethodConfigWithCustomAuthorizer(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAWSAPIGatewayMethodExists(resourceName, &conf),
 					testAccCheckAWSAPIGatewayMethodAttributes(&conf),
 					resource.TestCheckResourceAttr(resourceName, "http_method", "GET"),
 					resource.TestCheckResourceAttr(resourceName, "authorization", "CUSTOM"),
-					resource.TestMatchResourceAttr(resourceName, "authorizer_id", regexp.MustCompile("^[a-z0-9]{6}$")),
+					resource.TestCheckResourceAttrPair(resourceName, "authorizer_id", "aws_api_gateway_authorizer.test", "id"),
 					resource.TestCheckResourceAttr(resourceName, "request_models.application/json", "Error"),
 				),
 			},
@@ -80,7 +78,7 @@ func TestAccAWSAPIGatewayMethod_customauthorizer(t *testing.T) {
 			},
 
 			{
-				Config: testAccAWSAPIGatewayMethodConfigUpdate(rInt),
+				Config: testAccAWSAPIGatewayMethodConfigUpdate(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAWSAPIGatewayMethodExists(resourceName, &conf),
 					testAccCheckAWSAPIGatewayMethodAttributesUpdate(&conf),
@@ -94,7 +92,7 @@ func TestAccAWSAPIGatewayMethod_customauthorizer(t *testing.T) {
 
 func TestAccAWSAPIGatewayMethod_cognitoauthorizer(t *testing.T) {
 	var conf apigateway.Method
-	rInt := acctest.RandInt()
+	rName := acctest.RandomWithPrefix("tf-acc-test")
 	resourceName := "aws_api_gateway_method.test"
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -103,25 +101,25 @@ func TestAccAWSAPIGatewayMethod_cognitoauthorizer(t *testing.T) {
 		CheckDestroy: testAccCheckAWSAPIGatewayMethodDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAWSAPIGatewayMethodConfigWithCognitoAuthorizer(rInt),
+				Config: testAccAWSAPIGatewayMethodConfigWithCognitoAuthorizer(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAWSAPIGatewayMethodExists(resourceName, &conf),
 					testAccCheckAWSAPIGatewayMethodAttributes(&conf),
 					resource.TestCheckResourceAttr(resourceName, "http_method", "GET"),
 					resource.TestCheckResourceAttr(resourceName, "authorization", "COGNITO_USER_POOLS"),
-					resource.TestMatchResourceAttr(resourceName, "authorizer_id", regexp.MustCompile("^[a-z0-9]{6}$")),
+					resource.TestCheckResourceAttrPair(resourceName, "authorizer_id", "aws_api_gateway_authorizer.test", "id"),
 					resource.TestCheckResourceAttr(resourceName, "request_models.application/json", "Error"),
 					resource.TestCheckResourceAttr(resourceName, "authorization_scopes.#", "2"),
 				),
 			},
 
 			{
-				Config: testAccAWSAPIGatewayMethodConfigWithCognitoAuthorizerUpdate(rInt),
+				Config: testAccAWSAPIGatewayMethodConfigWithCognitoAuthorizerUpdate(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAWSAPIGatewayMethodExists(resourceName, &conf),
 					testAccCheckAWSAPIGatewayMethodAttributesUpdate(&conf),
 					resource.TestCheckResourceAttr(resourceName, "authorization", "COGNITO_USER_POOLS"),
-					resource.TestMatchResourceAttr(resourceName, "authorizer_id", regexp.MustCompile("^[a-z0-9]{6}$")),
+					resource.TestCheckResourceAttrPair(resourceName, "authorizer_id", "aws_api_gateway_authorizer.test", "id"),
 					resource.TestCheckResourceAttr(resourceName, "request_models.application/json", "Error"),
 					resource.TestCheckResourceAttr(resourceName, "authorization_scopes.#", "3"),
 				),
@@ -138,7 +136,7 @@ func TestAccAWSAPIGatewayMethod_cognitoauthorizer(t *testing.T) {
 
 func TestAccAWSAPIGatewayMethod_customrequestvalidator(t *testing.T) {
 	var conf apigateway.Method
-	rInt := acctest.RandInt()
+	rName := acctest.RandomWithPrefix("tf-acc-test")
 	resourceName := "aws_api_gateway_method.test"
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -147,14 +145,14 @@ func TestAccAWSAPIGatewayMethod_customrequestvalidator(t *testing.T) {
 		CheckDestroy: testAccCheckAWSAPIGatewayMethodDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAWSAPIGatewayMethodConfigWithCustomRequestValidator(rInt),
+				Config: testAccAWSAPIGatewayMethodConfigWithCustomRequestValidator(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAWSAPIGatewayMethodExists(resourceName, &conf),
 					testAccCheckAWSAPIGatewayMethodAttributes(&conf),
 					resource.TestCheckResourceAttr(resourceName, "http_method", "GET"),
 					resource.TestCheckResourceAttr(resourceName, "authorization", "NONE"),
 					resource.TestCheckResourceAttr(resourceName, "request_models.application/json", "Error"),
-					resource.TestMatchResourceAttr(resourceName, "request_validator_id", regexp.MustCompile("^[a-z0-9]{6}$")),
+					resource.TestCheckResourceAttrPair(resourceName, "request_validator_id", "aws_api_gateway_request_validator.test", "id"),
 				),
 			},
 			{
@@ -165,7 +163,7 @@ func TestAccAWSAPIGatewayMethod_customrequestvalidator(t *testing.T) {
 			},
 
 			{
-				Config: testAccAWSAPIGatewayMethodConfigWithCustomRequestValidatorUpdate(rInt),
+				Config: testAccAWSAPIGatewayMethodConfigWithCustomRequestValidatorUpdate(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAWSAPIGatewayMethodExists(resourceName, &conf),
 					testAccCheckAWSAPIGatewayMethodAttributesUpdate(&conf),
@@ -178,7 +176,7 @@ func TestAccAWSAPIGatewayMethod_customrequestvalidator(t *testing.T) {
 
 func TestAccAWSAPIGatewayMethod_disappears(t *testing.T) {
 	var conf apigateway.Method
-	rInt := acctest.RandInt()
+	rName := acctest.RandomWithPrefix("tf-acc-test")
 	resourceName := "aws_api_gateway_method.test"
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -187,7 +185,7 @@ func TestAccAWSAPIGatewayMethod_disappears(t *testing.T) {
 		CheckDestroy: testAccCheckAWSAPIGatewayMethodDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAWSAPIGatewayMethodConfig(rInt),
+				Config: testAccAWSAPIGatewayMethodConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAWSAPIGatewayMethodExists(resourceName, &conf),
 					testAccCheckResourceDisappears(testAccProvider, resourceAwsApiGatewayMethod(), resourceName),
@@ -200,24 +198,26 @@ func TestAccAWSAPIGatewayMethod_disappears(t *testing.T) {
 
 func testAccCheckAWSAPIGatewayMethodAttributes(conf *apigateway.Method) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		if *conf.HttpMethod != "GET" {
+		if aws.StringValue(conf.HttpMethod) != "GET" {
 			return fmt.Errorf("Wrong HttpMethod: %q", *conf.HttpMethod)
 		}
-		if *conf.AuthorizationType != "NONE" && *conf.AuthorizationType != "CUSTOM" && *conf.AuthorizationType != "COGNITO_USER_POOLS" {
+		if aws.StringValue(conf.AuthorizationType) != "NONE" &&
+			aws.StringValue(conf.AuthorizationType) != "CUSTOM" &&
+			aws.StringValue(conf.AuthorizationType) != "COGNITO_USER_POOLS" {
 			return fmt.Errorf("Wrong Authorization: %q", *conf.AuthorizationType)
 		}
 
 		if val, ok := conf.RequestParameters["method.request.header.Content-Type"]; !ok {
 			return fmt.Errorf("missing Content-Type RequestParameters")
 		} else {
-			if *val {
+			if aws.BoolValue(val) {
 				return fmt.Errorf("wrong Content-Type RequestParameters value")
 			}
 		}
 		if val, ok := conf.RequestParameters["method.request.querystring.page"]; !ok {
 			return fmt.Errorf("missing page RequestParameters")
 		} else {
-			if !*val {
+			if !aws.BoolValue(val) {
 				return fmt.Errorf("wrong query string RequestParameters value")
 			}
 		}
@@ -228,7 +228,7 @@ func testAccCheckAWSAPIGatewayMethodAttributes(conf *apigateway.Method) resource
 
 func testAccCheckAWSAPIGatewayMethodAttributesUpdate(conf *apigateway.Method) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		if *conf.HttpMethod != "GET" {
+		if aws.StringValue(conf.HttpMethod) != "GET" {
 			return fmt.Errorf("Wrong HttpMethod: %q", *conf.HttpMethod)
 		}
 		if conf.RequestParameters["method.request.header.Content-Type"] != nil {
@@ -237,7 +237,7 @@ func testAccCheckAWSAPIGatewayMethodAttributesUpdate(conf *apigateway.Method) re
 		if val, ok := conf.RequestParameters["method.request.querystring.page"]; !ok {
 			return fmt.Errorf("missing updated page RequestParameters")
 		} else {
-			if *val {
+			if aws.BoolValue(val) {
 				return fmt.Errorf("wrong query string RequestParameters updated value")
 			}
 		}
@@ -294,11 +294,7 @@ func testAccCheckAWSAPIGatewayMethodDestroy(s *terraform.State) error {
 			return fmt.Errorf("API Gateway Method still exists")
 		}
 
-		aws2err, ok := err.(awserr.Error)
-		if !ok {
-			return err
-		}
-		if aws2err.Code() != "NotFoundException" {
+		if !isAWSErr(err, apigateway.ErrCodeNotFoundException, "") {
 			return err
 		}
 
@@ -319,14 +315,14 @@ func testAccAWSAPIGatewayMethodImportStateIdFunc(resourceName string) resource.I
 	}
 }
 
-func testAccAWSAPIGatewayMethodConfigWithCustomAuthorizer(rInt int) string {
+func testAccAWSAPIGatewayMethodConfigWithCustomAuthorizer(rName string) string {
 	return fmt.Sprintf(`
 resource "aws_api_gateway_rest_api" "test" {
-  name = "tf-acc-test-custom-auth-%d"
+  name = %[1]q
 }
 
-resource "aws_iam_role" "invocation_role" {
-  name = "tf_acc_api_gateway_auth_invocation_role-%d"
+resource "aws_iam_role" "test" {
+  name = %[1]q
   path = "/"
 
   assume_role_policy = <<EOF
@@ -346,9 +342,9 @@ resource "aws_iam_role" "invocation_role" {
 EOF
 }
 
-resource "aws_iam_role_policy" "invocation_policy" {
-  name = "tf-acc-api-gateway-%d"
-  role = "${aws_iam_role.invocation_role.id}"
+resource "aws_iam_role_policy" "test" {
+  name = %[1]q
+  role = "${aws_iam_role.test.id}"
 
   policy = <<EOF
 {
@@ -357,15 +353,15 @@ resource "aws_iam_role_policy" "invocation_policy" {
     {
       "Action": "lambda:InvokeFunction",
       "Effect": "Allow",
-      "Resource": "${aws_lambda_function.authorizer.arn}"
+      "Resource": "${aws_lambda_function.test.arn}"
     }
   ]
 }
 EOF
 }
 
-resource "aws_iam_role" "iam_for_lambda" {
-  name = "tf_acc_iam_for_lambda_api_gateway_authorizer-%d"
+resource "aws_iam_role" "lambda" {
+  name = "%[1]s-lambda"
 
   assume_role_policy = <<EOF
 {
@@ -384,20 +380,20 @@ resource "aws_iam_role" "iam_for_lambda" {
 EOF
 }
 
-resource "aws_lambda_function" "authorizer" {
+resource "aws_lambda_function" "test" {
   filename         = "test-fixtures/lambdatest.zip"
   source_code_hash = "${filebase64sha256("test-fixtures/lambdatest.zip")}"
-  function_name    = "tf_acc_api_gateway_authorizer_%d"
-  role             = "${aws_iam_role.iam_for_lambda.arn}"
+  function_name    = %[1]q
+  role             = "${aws_iam_role.lambda.arn}"
   handler          = "exports.example"
   runtime          = "nodejs12.x"
 }
 
 resource "aws_api_gateway_authorizer" "test" {
-  name                   = "tf-acc-test-authorizer"
+  name                   = %[1]q
   rest_api_id            = "${aws_api_gateway_rest_api.test.id}"
-  authorizer_uri         = "${aws_lambda_function.authorizer.invoke_arn}"
-  authorizer_credentials = "${aws_iam_role.invocation_role.arn}"
+  authorizer_uri         = "${aws_lambda_function.test.invoke_arn}"
+  authorizer_credentials = "${aws_iam_role.test.arn}"
 }
 
 resource "aws_api_gateway_resource" "test" {
@@ -422,17 +418,17 @@ resource "aws_api_gateway_method" "test" {
     "method.request.querystring.page"    = true
   }
 }
-`, rInt, rInt, rInt, rInt, rInt)
+`, rName)
 }
 
-func testAccAWSAPIGatewayMethodConfigWithCognitoAuthorizer(rInt int) string {
+func testAccAWSAPIGatewayMethodConfigWithCognitoAuthorizer(rName string) string {
 	return fmt.Sprintf(`
 resource "aws_api_gateway_rest_api" "test" {
-  name = "tf-acc-test-cognito-auth-%d"
+  name = %[1]q
 }
 
-resource "aws_iam_role" "invocation_role" {
-  name = "tf_acc_api_gateway_auth_invocation_role-%d"
+resource "aws_iam_role" "test" {
+  name = %[1]q
   path = "/"
 
   assume_role_policy = <<EOF
@@ -452,8 +448,8 @@ resource "aws_iam_role" "invocation_role" {
 EOF
 }
 
-resource "aws_iam_role" "iam_for_lambda" {
-  name = "tf_acc_iam_for_lambda_api_gateway_authorizer-%d"
+resource "aws_iam_role" "lambda" {
+  name = "%[1]s-lambda"
 
   assume_role_policy = <<EOF
 {
@@ -472,15 +468,15 @@ resource "aws_iam_role" "iam_for_lambda" {
 EOF
 }
 
-resource "aws_cognito_user_pool" "pool" {
-  name = "tf-acc-test-cognito-pool-%d"
+resource "aws_cognito_user_pool" "test" {
+  name = %[1]q
 }
 
 resource "aws_api_gateway_authorizer" "test" {
   name            = "tf-acc-test-cognito-authorizer"
   rest_api_id     = "${aws_api_gateway_rest_api.test.id}"
   identity_source = "method.request.header.Authorization"
-  provider_arns   = ["${aws_cognito_user_pool.pool.arn}"]
+  provider_arns   = ["${aws_cognito_user_pool.test.arn}"]
   type            = "COGNITO_USER_POOLS"
 }
 
@@ -507,17 +503,17 @@ resource "aws_api_gateway_method" "test" {
     "method.request.querystring.page"    = true
   }
 }
-`, rInt, rInt, rInt, rInt)
+`, rName)
 }
 
-func testAccAWSAPIGatewayMethodConfigWithCognitoAuthorizerUpdate(rInt int) string {
+func testAccAWSAPIGatewayMethodConfigWithCognitoAuthorizerUpdate(rName string) string {
 	return fmt.Sprintf(`
 resource "aws_api_gateway_rest_api" "test" {
-  name = "tf-acc-test-cognito-auth-%d"
+  name = %[1]q
 }
 
-resource "aws_iam_role" "invocation_role" {
-  name = "tf_acc_api_gateway_auth_invocation_role-%d"
+resource "aws_iam_role" "test" {
+  name = %[1]q
   path = "/"
 
   assume_role_policy = <<EOF
@@ -537,8 +533,8 @@ resource "aws_iam_role" "invocation_role" {
 EOF
 }
 
-resource "aws_iam_role" "iam_for_lambda" {
-  name = "tf_acc_iam_for_lambda_api_gateway_authorizer-%d"
+resource "aws_iam_role" "lambda" {
+  name = "%[1]s-lambda"
 
   assume_role_policy = <<EOF
 {
@@ -557,15 +553,15 @@ resource "aws_iam_role" "iam_for_lambda" {
 EOF
 }
 
-resource "aws_cognito_user_pool" "pool" {
-  name = "tf-acc-test-cognito-pool-%d"
+resource "aws_cognito_user_pool" "test" {
+  name = %[1]q
 }
 
 resource "aws_api_gateway_authorizer" "test" {
-  name            = "tf-acc-test-cognito-authorizer"
+  name            = %[1]q
   rest_api_id     = "${aws_api_gateway_rest_api.test.id}"
   identity_source = "method.request.header.Authorization"
-  provider_arns   = ["${aws_cognito_user_pool.pool.arn}"]
+  provider_arns   = ["${aws_cognito_user_pool.test.arn}"]
   type            = "COGNITO_USER_POOLS"
 }
 
@@ -591,13 +587,13 @@ resource "aws_api_gateway_method" "test" {
     "method.request.querystring.page" = false
   }
 }
-`, rInt, rInt, rInt, rInt)
+`, rName)
 }
 
-func testAccAWSAPIGatewayMethodConfig(rInt int) string {
+func testAccAWSAPIGatewayMethodConfig(rName string) string {
 	return fmt.Sprintf(`
 resource "aws_api_gateway_rest_api" "test" {
-  name = "tf-acc-test-apig-method-%d"
+  name = %[1]q
 }
 
 resource "aws_api_gateway_resource" "test" {
@@ -621,13 +617,13 @@ resource "aws_api_gateway_method" "test" {
     "method.request.querystring.page"    = true
   }
 }
-`, rInt)
+`, rName)
 }
 
-func testAccAWSAPIGatewayMethodConfigUpdate(rInt int) string {
+func testAccAWSAPIGatewayMethodConfigUpdate(rName string) string {
 	return fmt.Sprintf(`
 resource "aws_api_gateway_rest_api" "test" {
-  name = "tf-acc-test-apig-method-%d"
+  name = %[1]q
 }
 
 resource "aws_api_gateway_resource" "test" {
@@ -650,13 +646,13 @@ resource "aws_api_gateway_method" "test" {
     "method.request.querystring.page" = false
   }
 }
-`, rInt)
+`, rName)
 }
 
-func testAccAWSAPIGatewayMethodConfigWithCustomRequestValidator(rInt int) string {
+func testAccAWSAPIGatewayMethodConfigWithCustomRequestValidator(rName string) string {
 	return fmt.Sprintf(`
 resource "aws_api_gateway_rest_api" "test" {
-  name = "tf-acc-test-apig-method-custom-req-validator-%d"
+  name = %[1]q
 }
 
 resource "aws_api_gateway_resource" "test" {
@@ -665,7 +661,7 @@ resource "aws_api_gateway_resource" "test" {
   path_part   = "test"
 }
 
-resource "aws_api_gateway_request_validator" "validator" {
+resource "aws_api_gateway_request_validator" "test" {
   rest_api_id                 = "${aws_api_gateway_rest_api.test.id}"
   name                        = "paramsValidator"
   validate_request_parameters = true
@@ -686,15 +682,15 @@ resource "aws_api_gateway_method" "test" {
     "method.request.querystring.page"    = true
   }
 
-  request_validator_id = "${aws_api_gateway_request_validator.validator.id}"
+  request_validator_id = "${aws_api_gateway_request_validator.test.id}"
 }
-`, rInt)
+`, rName)
 }
 
-func testAccAWSAPIGatewayMethodConfigWithCustomRequestValidatorUpdate(rInt int) string {
+func testAccAWSAPIGatewayMethodConfigWithCustomRequestValidatorUpdate(rName string) string {
 	return fmt.Sprintf(`
 resource "aws_api_gateway_rest_api" "test" {
-  name = "tf-acc-test-apig-method-custom-req-validator-%d"
+  name = %[1]q
 }
 
 resource "aws_api_gateway_resource" "test" {
@@ -703,7 +699,7 @@ resource "aws_api_gateway_resource" "test" {
   path_part   = "test"
 }
 
-resource "aws_api_gateway_request_validator" "validator" {
+resource "aws_api_gateway_request_validator" "test" {
   rest_api_id                 = "${aws_api_gateway_rest_api.test.id}"
   name                        = "paramsValidator"
   validate_request_parameters = true
@@ -723,5 +719,5 @@ resource "aws_api_gateway_method" "test" {
     "method.request.querystring.page" = false
   }
 }
-`, rInt)
+`, rName)
 }
