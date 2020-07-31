@@ -46,7 +46,7 @@ func resourceAwsKeyPair() *schema.Resource {
 			},
 			"public_key": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 				ForceNew: true,
 				StateFunc: func(v interface{}) string {
 					switch v := v.(type) {
@@ -88,18 +88,33 @@ func resourceAwsKeyPairCreate(d *schema.ResourceData, meta interface{}) error {
 		d.Set("key_name", keyName)
 	}
 
-	publicKey := d.Get("public_key").(string)
-	req := &ec2.ImportKeyPairInput{
-		KeyName:           aws.String(keyName),
-		PublicKeyMaterial: []byte(publicKey),
-		TagSpecifications: ec2TagSpecificationsFromMap(d.Get("tags").(map[string]interface{}), ec2.ResourceTypeKeyPair),
-	}
-	resp, err := conn.ImportKeyPair(req)
-	if err != nil {
-		return fmt.Errorf("Error import KeyPair: %s", err)
+	tags := ec2TagSpecificationsFromMap(d.Get("tags").(map[string]interface{}), ec2.ResourceTypeKeyPair)
+	publicKey, pkOk := d.GetOk("public_key")
+
+	if pkOk {
+		req := &ec2.ImportKeyPairInput{
+			KeyName:           aws.String(keyName),
+			PublicKeyMaterial: []byte(publicKey.(string)),
+			TagSpecifications: tags,
+		}
+
+		_, err := conn.ImportKeyPair(req)
+		if err != nil {
+			return fmt.Errorf("error import Key Pair: %w", err)
+		}
+	} else {
+		req := &ec2.CreateKeyPairInput{
+			KeyName:           aws.String(keyName),
+			TagSpecifications: tags,
+		}
+
+		_, err := conn.CreateKeyPair(req)
+		if err != nil {
+			return fmt.Errorf("error creating Key Pair: %w", err)
+		}
 	}
 
-	d.SetId(aws.StringValue(resp.KeyName))
+	d.SetId(keyName)
 
 	return resourceAwsKeyPairRead(d, meta)
 }
@@ -118,7 +133,7 @@ func resourceAwsKeyPairRead(d *schema.ResourceData, meta interface{}) error {
 			d.SetId("")
 			return nil
 		}
-		return fmt.Errorf("Error retrieving KeyPair: %s", err)
+		return fmt.Errorf("error retrieving Key Pair: %w", err)
 	}
 
 	if len(resp.KeyPairs) == 0 {
@@ -130,17 +145,17 @@ func resourceAwsKeyPairRead(d *schema.ResourceData, meta interface{}) error {
 	kp := resp.KeyPairs[0]
 
 	if aws.StringValue(kp.KeyName) != d.Id() {
-		return fmt.Errorf("Unable to find key pair within: %#v", resp.KeyPairs)
+		return fmt.Errorf("unable to find key pair within: %#v", resp.KeyPairs)
 	}
 
 	d.Set("key_name", kp.KeyName)
 	d.Set("fingerprint", kp.KeyFingerprint)
 	d.Set("key_pair_id", kp.KeyPairId)
 	if err := d.Set("tags", keyvaluetags.Ec2KeyValueTags(kp.Tags).IgnoreAws().IgnoreConfig(ignoreTagsConfig).Map()); err != nil {
-		return fmt.Errorf("error setting tags: %s", err)
+		return fmt.Errorf("error setting tags: %w", err)
 	}
 
-	arn := arn.ARN{
+	keyPairArn := arn.ARN{
 		Partition: meta.(*AWSClient).partition,
 		Service:   "ec2",
 		Region:    meta.(*AWSClient).region,
@@ -148,7 +163,7 @@ func resourceAwsKeyPairRead(d *schema.ResourceData, meta interface{}) error {
 		Resource:  fmt.Sprintf("key-pair/%s", d.Id()),
 	}.String()
 
-	d.Set("arn", arn)
+	d.Set("arn", keyPairArn)
 
 	return nil
 }
@@ -159,7 +174,7 @@ func resourceAwsKeyPairUpdate(d *schema.ResourceData, meta interface{}) error {
 	if d.HasChange("tags") {
 		o, n := d.GetChange("tags")
 		if err := keyvaluetags.Ec2UpdateTags(conn, d.Get("key_pair_id").(string), o, n); err != nil {
-			return fmt.Errorf("error adding tags: %s", err)
+			return fmt.Errorf("error adding tags: %w", err)
 		}
 	}
 
@@ -168,7 +183,6 @@ func resourceAwsKeyPairUpdate(d *schema.ResourceData, meta interface{}) error {
 
 func resourceAwsKeyPairDelete(d *schema.ResourceData, meta interface{}) error {
 	conn := meta.(*AWSClient).ec2conn
-
 	_, err := conn.DeleteKeyPair(&ec2.DeleteKeyPairInput{
 		KeyName: aws.String(d.Id()),
 	})

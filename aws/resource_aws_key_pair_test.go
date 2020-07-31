@@ -29,29 +29,29 @@ func init() {
 func testSweepKeyPairs(region string) error {
 	client, err := sharedClientForRegion(region)
 	if err != nil {
-		return fmt.Errorf("error getting client: %s", err)
+		return fmt.Errorf("error getting client: %w", err)
 	}
-	ec2conn := client.(*AWSClient).ec2conn
+	conn := client.(*AWSClient).ec2conn
 
 	log.Printf("Destroying the tmp keys in (%s)", client.(*AWSClient).region)
 
-	resp, err := ec2conn.DescribeKeyPairs(&ec2.DescribeKeyPairsInput{})
+	resp, err := conn.DescribeKeyPairs(&ec2.DescribeKeyPairsInput{})
 	if err != nil {
 		if testSweepSkipSweepError(err) {
 			log.Printf("[WARN] Skipping EC2 Key Pair sweep for %s: %s", region, err)
 			return nil
 		}
-		return fmt.Errorf("Error describing key pairs in Sweeper: %s", err)
+		return fmt.Errorf("error describing key pairs in Sweeper: %w", err)
 	}
 
 	keyPairs := resp.KeyPairs
 	for _, d := range keyPairs {
-		_, err := ec2conn.DeleteKeyPair(&ec2.DeleteKeyPairInput{
+		_, err := conn.DeleteKeyPair(&ec2.DeleteKeyPairInput{
 			KeyName: d.KeyName,
 		})
 
 		if err != nil {
-			return fmt.Errorf("Error deleting key pairs in Sweeper: %s", err)
+			return fmt.Errorf("error deleting key pairs in Sweeper: %w", err)
 		}
 	}
 	return nil
@@ -69,13 +69,44 @@ func TestAccAWSKeyPair_basic(t *testing.T) {
 		CheckDestroy: testAccCheckAWSKeyPairDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAWSKeyPairConfig(rName),
+				Config: testAccAWSKeyPairBasicConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAWSKeyPairExists(resourceName, &keyPair),
 					testAccCheckResourceAttrRegionalARN(resourceName, "arn", "ec2", fmt.Sprintf("key-pair/%s", rName)),
 					testAccCheckAWSKeyPairFingerprint(&keyPair, fingerprint),
 					resource.TestCheckResourceAttr(resourceName, "fingerprint", fingerprint),
 					resource.TestCheckResourceAttr(resourceName, "key_name", rName),
+					resource.TestCheckResourceAttr(resourceName, "tags.%", "0"),
+				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"public_key"},
+			},
+		},
+	})
+}
+
+func TestAccAWSKeyPair_noPublicKey(t *testing.T) {
+	var keyPair ec2.KeyPairInfo
+	resourceName := "aws_key_pair.test"
+	rName := acctest.RandomWithPrefix("tf-acc-test")
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAWSKeyPairDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccAWSKeyPairNoPKConfig(rName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAWSKeyPairExists(resourceName, &keyPair),
+					testAccCheckResourceAttrRegionalARN(resourceName, "arn", "ec2", fmt.Sprintf("key-pair/%s", rName)),
+					resource.TestCheckResourceAttrSet(resourceName, "fingerprint"),
+					resource.TestCheckResourceAttr(resourceName, "key_name", rName),
+					resource.TestCheckResourceAttr(resourceName, "tags.%", "0"),
 				),
 			},
 			{
@@ -200,7 +231,7 @@ func TestAccAWSKeyPair_disappears(t *testing.T) {
 		CheckDestroy: testAccCheckAWSKeyPairDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAWSKeyPairConfig(rName),
+				Config: testAccAWSKeyPairBasicConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAWSKeyPairExists(resourceName, &keyPair),
 					testAccCheckResourceDisappears(testAccProvider, resourceAwsKeyPair(), resourceName),
@@ -286,11 +317,19 @@ func testAccCheckAWSKeyPairExists(n string, res *ec2.KeyPairInfo) resource.TestC
 	}
 }
 
-func testAccAWSKeyPairConfig(rName string) string {
+func testAccAWSKeyPairBasicConfig(rName string) string {
 	return fmt.Sprintf(`
 resource "aws_key_pair" "test" {
   key_name   = %[1]q
   public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQD3F6tyPEFEzV0LX3X8BsXdMsQz1x2cEikKDEY0aIj41qgxMCP/iteneqXSIFZBp5vizPvaoIR3Um9xK7PGoW8giupGn+EPuxIA4cDM4vzOqOkiMPhz5XK0whEjkVzTo4+S0puvDZuwIsdiW9mxhJc7tgBNL0cYlWSYVkz4G/fslNfRPW5mYAM49f4fhtxPb5ok4Q2Lg9dPKVHO/Bgeu5woMc7RY0p1ej6D4CKFE6lymSDJpW0YHX/wqE9+cfEauh7xZcG0q9t2ta6F6fmX0agvpFyZo8aFbXeUBr7osSCJNgvavWbM/06niWrOvYX2xwWdhXmXSrbX8ZbabVohBK41 phodgson@thoughtworks.com"
+}
+`, rName)
+}
+
+func testAccAWSKeyPairNoPKConfig(rName string) string {
+	return fmt.Sprintf(`
+resource "aws_key_pair" "test" {
+  key_name   = %[1]q
 }
 `, rName)
 }
