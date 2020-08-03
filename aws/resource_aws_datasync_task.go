@@ -194,7 +194,7 @@ func resourceAwsDataSyncTaskCreate(d *schema.ResourceData, meta interface{}) err
 	log.Printf("[DEBUG] Creating DataSync Task: %s", input)
 	output, err := conn.CreateTask(input)
 	if err != nil {
-		return fmt.Errorf("error creating DataSync Task: %s", err)
+		return fmt.Errorf("error creating DataSync Task: %w", err)
 	}
 
 	d.SetId(aws.StringValue(output.TaskArn))
@@ -230,18 +230,18 @@ func resourceAwsDataSyncTaskCreate(d *schema.ResourceData, meta interface{}) err
 	})
 	if isResourceTimeoutError(err) {
 		taskOutput, err = conn.DescribeTask(taskInput)
-		if isAWSErr(err, "InvalidRequestException", "not found") {
-			return fmt.Errorf("Task not found after creation: %s", err)
+		if isAWSErr(err, datasync.ErrCodeInvalidRequestException, "not found") {
+			return fmt.Errorf("Task not found after creation: %w", err)
 		}
 		if err != nil {
-			return fmt.Errorf("Error describing task after creation: %s", err)
+			return fmt.Errorf("Error describing task after creation: %w", err)
 		}
 		if aws.StringValue(taskOutput.Status) == datasync.TaskStatusCreating {
 			return fmt.Errorf("Data sync task status has not finished creating")
 		}
 	}
 	if err != nil {
-		return fmt.Errorf("error waiting for DataSync Task (%s) creation: %s", d.Id(), err)
+		return fmt.Errorf("error waiting for DataSync Task (%s) creation: %w", d.Id(), err)
 	}
 
 	return resourceAwsDataSyncTaskRead(d, meta)
@@ -265,7 +265,7 @@ func resourceAwsDataSyncTaskRead(d *schema.ResourceData, meta interface{}) error
 	}
 
 	if err != nil {
-		return fmt.Errorf("error reading DataSync Task (%s): %s", d.Id(), err)
+		return fmt.Errorf("error reading DataSync Task (%s): %w", d.Id(), err)
 	}
 
 	d.Set("arn", output.TaskArn)
@@ -274,11 +274,11 @@ func resourceAwsDataSyncTaskRead(d *schema.ResourceData, meta interface{}) error
 	d.Set("name", output.Name)
 
 	if err := d.Set("options", flattenDataSyncOptions(output.Options)); err != nil {
-		return fmt.Errorf("error setting options: %s", err)
+		return fmt.Errorf("error setting options: %w", err)
 	}
 
 	if err := d.Set("schedule", flattenAwsDataSyncTaskSchedule(output.Schedule)); err != nil {
-		return fmt.Errorf("error setting schedule: %s", err)
+		return fmt.Errorf("error setting schedule: %w", err)
 	}
 
 	d.Set("source_location_arn", output.SourceLocationArn)
@@ -286,11 +286,11 @@ func resourceAwsDataSyncTaskRead(d *schema.ResourceData, meta interface{}) error
 	tags, err := keyvaluetags.DatasyncListTags(conn, d.Id())
 
 	if err != nil {
-		return fmt.Errorf("error listing tags for DataSync Task (%s): %s", d.Id(), err)
+		return fmt.Errorf("error listing tags for DataSync Task (%s): %w", d.Id(), err)
 	}
 
 	if err := d.Set("tags", tags.IgnoreAws().IgnoreConfig(ignoreTagsConfig).Map()); err != nil {
-		return fmt.Errorf("error setting tags: %s", err)
+		return fmt.Errorf("error setting tags: %w", err)
 	}
 
 	return nil
@@ -327,7 +327,7 @@ func resourceAwsDataSyncTaskUpdate(d *schema.ResourceData, meta interface{}) err
 	if needsUpdate {
 		log.Printf("[DEBUG] Updating DataSync Task: %s", input)
 		if _, err := conn.UpdateTask(input); err != nil {
-			return fmt.Errorf("error creating DataSync Task: %s", err)
+			return fmt.Errorf("error creating DataSync Task: %w", err)
 		}
 	}
 
@@ -335,7 +335,7 @@ func resourceAwsDataSyncTaskUpdate(d *schema.ResourceData, meta interface{}) err
 		o, n := d.GetChange("tags")
 
 		if err := keyvaluetags.DatasyncUpdateTags(conn, d.Id(), o, n); err != nil {
-			return fmt.Errorf("error updating DataSync Task (%s) tags: %s", d.Id(), err)
+			return fmt.Errorf("error updating DataSync Task (%s) tags: %w", d.Id(), err)
 		}
 	}
 
@@ -357,7 +357,7 @@ func resourceAwsDataSyncTaskDelete(d *schema.ResourceData, meta interface{}) err
 	}
 
 	if err != nil {
-		return fmt.Errorf("error deleting DataSync Task (%s): %s", d.Id(), err)
+		return fmt.Errorf("error deleting DataSync Task (%s): %w", d.Id(), err)
 	}
 
 	return nil
