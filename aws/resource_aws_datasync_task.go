@@ -321,7 +321,7 @@ func resourceAwsDataSyncTaskUpdate(d *schema.ResourceData, meta interface{}) err
 	}
 
 	if d.HasChanges("cloudwatch_log_group_arn") {
-		input.CloudWatchLogGroupArn = aws.String(d.Get("name").(string))
+		input.CloudWatchLogGroupArn = aws.String(d.Get("cloudwatch_log_group_arn").(string))
 		needsUpdate = true
 	}
 
