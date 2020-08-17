@@ -1,3 +1,23 @@
+# v0.7.0
+
+ENHANCEMENTS
+
+* check: Match increased registry max number of files limit from 1000 to 2000
+
+BUG FIXES
+
+* check: Allow legacy directory structure without side navigation (use `-require-side-navigation` flag to keep deprecated old behavior)
+* check: Return correct valid extensions list with registry directory structure (#38)
+
+# v0.6.0
+
+ENHANCEMENTS
+
+* check: Add `-ignore-file-mismatch-data-sources` option
+* check: Add `-ignore-file-mismatch-resources` option
+* check: Add `-ignore-file-missing-data-sources` option
+* check: Add `-ignore-file-missing-resources` option
+
 # v0.5.3
 
 BUG FIXES

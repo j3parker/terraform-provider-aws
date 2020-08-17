@@ -8,9 +8,9 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/kinesisvideo"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 func TestAccAWSKinesisVideoStream_basic(t *testing.T) {
@@ -156,7 +156,7 @@ func TestAccAWSKinesisVideoStream_disappears(t *testing.T) {
 				Config: testAccKinesisVideoStreamConfig(rInt),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckKinesisVideoStreamExists(resourceName, &stream),
-					testAccCheckKinesisVideoStreamDisappears(resourceName, &stream),
+					testAccCheckKinesisVideoStreamDisappears(resourceName),
 				),
 				ExpectNonEmptyPlan: true,
 			},
@@ -164,7 +164,7 @@ func TestAccAWSKinesisVideoStream_disappears(t *testing.T) {
 	})
 }
 
-func testAccCheckKinesisVideoStreamDisappears(resourceName string, stream *kinesisvideo.StreamInfo) resource.TestCheckFunc {
+func testAccCheckKinesisVideoStreamDisappears(resourceName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		conn := testAccProvider.Meta().(*AWSClient).kinesisvideoconn
 
