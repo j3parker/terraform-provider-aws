@@ -67,15 +67,14 @@ func testSweepCognitoUserPoolDomains(region string) error {
 			log.Printf("[WARN] Skipping Cognito User Pool Domain sweep for %s: %s", region, err)
 			return nil
 		}
-		return fmt.Errorf("Error retrieving Cognito User Pools: %s", err)
+		return fmt.Errorf("Error retrieving Cognito User Pools: %w", err)
 	}
 
 	return nil
 }
 
 func TestAccAWSCognitoUserPoolDomain_basic(t *testing.T) {
-	domainName := fmt.Sprintf("tf-acc-test-domain-%d", acctest.RandInt())
-	poolName := fmt.Sprintf("tf-acc-test-pool-%s", acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum))
+	rName := acctest.RandomWithPrefix("tf-acc-test")
 	resourceName := "aws_cognito_user_pool_domain.test"
 	userPoolResourceName := "aws_cognito_user_pool.test"
 
@@ -85,10 +84,10 @@ func TestAccAWSCognitoUserPoolDomain_basic(t *testing.T) {
 		CheckDestroy: testAccCheckAWSCognitoUserPoolDomainDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAWSCognitoUserPoolDomainConfig_basic(domainName, poolName),
+				Config: testAccAWSCognitoUserPoolDomainConfig_basic(rName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					testAccCheckAWSCognitoUserPoolDomainExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "domain", domainName),
+					resource.TestCheckResourceAttr(resourceName, "domain", rName),
 					resource.TestCheckResourceAttrPair(resourceName, "user_pool_id", userPoolResourceName, "id"),
 					resource.TestCheckResourceAttrSet(resourceName, "aws_account_id"),
 					resource.TestCheckResourceAttrSet(resourceName, "cloudfront_distribution_arn"),
@@ -109,7 +108,7 @@ func TestAccAWSCognitoUserPoolDomain_basic(t *testing.T) {
 }
 
 func TestAccAWSCognitoUserPoolDomain_custom(t *testing.T) {
-	poolName := fmt.Sprintf("tf-acc-test-pool-%s", acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum))
+	rName := acctest.RandomWithPrefix("tf-acc-test")
 	// This test must always run in us-east-1
 	// BadRequestException: Invalid certificate ARN: arn:aws:acm:us-west-2:123456789012:certificate/xxxxx. Certificate must be in 'us-east-1'.
 	oldvar := os.Getenv("AWS_DEFAULT_REGION")
@@ -142,7 +141,7 @@ func TestAccAWSCognitoUserPoolDomain_custom(t *testing.T) {
 		CheckDestroy: testAccCheckAWSCognitoUserPoolDomainDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAWSCognitoUserPoolDomainConfig_custom(customSubDomainName, poolName, certificateArn),
+				Config: testAccAWSCognitoUserPoolDomainConfig_custom(rName, certificateArn),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					testAccCheckAWSCognitoUserPoolDomainExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "domain", customSubDomainName),
@@ -159,8 +158,7 @@ func TestAccAWSCognitoUserPoolDomain_custom(t *testing.T) {
 }
 
 func TestAccAWSCognitoUserPoolDomain_wait_for_deployment(t *testing.T) {
-	domainName := fmt.Sprintf("tf-acc-test-domain-%d", acctest.RandInt())
-	poolName := fmt.Sprintf("tf-acc-test-pool-%s", acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum))
+	rName := acctest.RandomWithPrefix("tf-acc-test")
 	resourceName := "aws_cognito_user_pool_domain.test"
 	userPoolResourceName := "aws_cognito_user_pool.test"
 
@@ -170,10 +168,10 @@ func TestAccAWSCognitoUserPoolDomain_wait_for_deployment(t *testing.T) {
 		CheckDestroy: testAccCheckAWSCognitoUserPoolDomainDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAWSCognitoUserPoolDomainConfigWaitForDeployment(domainName, poolName),
+				Config: testAccAWSCognitoUserPoolDomainConfigWaitForDeployment(rName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					testAccCheckAWSCognitoUserPoolDomainExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "domain", domainName),
+					resource.TestCheckResourceAttr(resourceName, "domain", rName),
 					resource.TestCheckResourceAttrPair(resourceName, "user_pool_id", userPoolResourceName, "id"),
 					resource.TestCheckResourceAttrSet(resourceName, "aws_account_id"),
 					resource.TestCheckResourceAttrSet(resourceName, "cloudfront_distribution_arn"),
@@ -194,9 +192,8 @@ func TestAccAWSCognitoUserPoolDomain_wait_for_deployment(t *testing.T) {
 }
 
 func TestAccAWSCognitoUserPoolDomain_disappears(t *testing.T) {
-	domainName := fmt.Sprintf("tf-acc-test-domain-%d", acctest.RandInt())
-	poolName := fmt.Sprintf("tf-acc-test-pool-%s", acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum))
-	resourceName := "aws_cognito_user_pool_domain.main"
+	rName := acctest.RandomWithPrefix("tf-acc-test")
+	resourceName := "aws_cognito_user_pool_domain.test"
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t); testAccPreCheckAWSCognitoIdentityProvider(t) },
@@ -204,7 +201,7 @@ func TestAccAWSCognitoUserPoolDomain_disappears(t *testing.T) {
 		CheckDestroy: testAccCheckAWSCognitoUserPoolDomainDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAWSCognitoUserPoolDomainConfig_basic(domainName, poolName),
+				Config: testAccAWSCognitoUserPoolDomainConfig_basic(rName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					testAccCheckAWSCognitoUserPoolDomainExists(resourceName),
 					testAccCheckResourceDisappears(testAccProvider, resourceAwsCognitoUserPoolDomain(), resourceName),
@@ -259,45 +256,43 @@ func testAccCheckAWSCognitoUserPoolDomainDestroy(s *terraform.State) error {
 	return nil
 }
 
-func testAccAWSCognitoUserPoolDomainConfig_basic(domainName, poolName string) string {
+func testAccAWSCognitoUserPoolDomainConfig_basic(rName string) string {
 	return fmt.Sprintf(`
 resource "aws_cognito_user_pool_domain" "test" {
-  domain       = "%s"
+  domain       = %[1]q
   user_pool_id = aws_cognito_user_pool.test.id
 }
 
 resource "aws_cognito_user_pool" "test" {
-  name = "%s"
+  name = %[1]q
 }
-`, domainName, poolName)
+`, rName)
 }
 
-func testAccAWSCognitoUserPoolDomainConfigWaitForDeployment(domainName, poolName string) string {
+func testAccAWSCognitoUserPoolDomainConfigWaitForDeployment(rName string) string {
 	return fmt.Sprintf(`
 resource "aws_cognito_user_pool_domain" "test" {
-  domain              = "%s"
-  user_pool_id        = "${aws_cognito_user_pool.test.id}"
+  domain              = %[1]q
+  user_pool_id        = aws_cognito_user_pool.test.id
   wait_for_deployment = false
-
-  user_pool_id = aws_cognito_user_pool.main.id
 }
 
 resource "aws_cognito_user_pool" "test" {
-  name = "%s"
+  name = %[1]q
 }
-`, domainName, poolName)
+`, rName)
 }
 
-func testAccAWSCognitoUserPoolDomainConfig_custom(customSubDomainName, poolName, certificateArn string) string {
+func testAccAWSCognitoUserPoolDomainConfig_custom(rName, certificateArn string) string {
 	return fmt.Sprintf(`
 resource "aws_cognito_user_pool_domain" "test" {
-  domain          = "%s"
+  domain          = %[1]q
   user_pool_id    = aws_cognito_user_pool.test.id
-  certificate_arn = "%s"
+  certificate_arn = %[2]q
 }
 
 resource "aws_cognito_user_pool" "test" {
-  name = "%s"
+  name = %[1]q
 }
-`, customSubDomainName, certificateArn, poolName)
+`, rName, certificateArn)
 }
