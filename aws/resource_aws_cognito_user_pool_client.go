@@ -3,6 +3,7 @@ package aws
 import (
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -51,17 +52,8 @@ func resourceAwsCognitoUserPoolClient() *schema.Resource {
 				Type:     schema.TypeSet,
 				Optional: true,
 				Elem: &schema.Schema{
-					Type: schema.TypeString,
-					ValidateFunc: validation.StringInSlice([]string{
-						cognitoidentityprovider.ExplicitAuthFlowsTypeAdminNoSrpAuth,
-						cognitoidentityprovider.ExplicitAuthFlowsTypeCustomAuthFlowOnly,
-						cognitoidentityprovider.ExplicitAuthFlowsTypeUserPasswordAuth,
-						cognitoidentityprovider.ExplicitAuthFlowsTypeAllowAdminUserPasswordAuth,
-						cognitoidentityprovider.ExplicitAuthFlowsTypeAllowCustomAuth,
-						cognitoidentityprovider.ExplicitAuthFlowsTypeAllowUserPasswordAuth,
-						cognitoidentityprovider.ExplicitAuthFlowsTypeAllowUserSrpAuth,
-						cognitoidentityprovider.ExplicitAuthFlowsTypeAllowRefreshTokenAuth,
-					}, false),
+					Type:         schema.TypeString,
+					ValidateFunc: validation.StringInSlice(cognitoidentityprovider.ExplicitAuthFlowsType_Values(), false),
 				},
 			},
 
@@ -93,12 +85,8 @@ func resourceAwsCognitoUserPoolClient() *schema.Resource {
 				Optional: true,
 				MaxItems: 3,
 				Elem: &schema.Schema{
-					Type: schema.TypeString,
-					ValidateFunc: validation.StringInSlice([]string{
-						cognitoidentityprovider.OAuthFlowTypeCode,
-						cognitoidentityprovider.OAuthFlowTypeImplicit,
-						cognitoidentityprovider.OAuthFlowTypeClientCredentials,
-					}, false),
+					Type:         schema.TypeString,
+					ValidateFunc: validation.StringInSlice(cognitoidentityprovider.OAuthFlowType_Values(), false),
 				},
 			},
 
@@ -125,8 +113,12 @@ func resourceAwsCognitoUserPoolClient() *schema.Resource {
 				Optional: true,
 				MaxItems: 100,
 				Elem: &schema.Schema{
-					Type:         schema.TypeString,
-					ValidateFunc: validateCognitoUserPoolClientURL,
+					Type: schema.TypeString,
+					ValidateFunc: validation.All(
+						validation.StringLenBetween(1, 1024),
+						validation.StringMatch(regexp.MustCompile(`[\p{L}\p{M}\p{S}\p{N}\p{P}]+`),
+							"must satisfy regular expression pattern: [\\p{L}\\p{M}\\p{S}\\p{N}\\p{P}]+`"),
+					),
 				},
 			},
 
@@ -140,8 +132,12 @@ func resourceAwsCognitoUserPoolClient() *schema.Resource {
 				Optional: true,
 				MaxItems: 100,
 				Elem: &schema.Schema{
-					Type:         schema.TypeString,
-					ValidateFunc: validateCognitoUserPoolClientURL,
+					Type: schema.TypeString,
+					ValidateFunc: validation.All(
+						validation.StringLenBetween(1, 1024),
+						validation.StringMatch(regexp.MustCompile(`[\p{L}\p{M}\p{S}\p{N}\p{P}]+`),
+							"must satisfy regular expression pattern: [\\p{L}\\p{M}\\p{S}\\p{N}\\p{P}]+`"),
+					),
 				},
 			},
 
