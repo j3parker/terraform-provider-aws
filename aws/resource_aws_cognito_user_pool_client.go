@@ -178,6 +178,33 @@ func resourceAwsCognitoUserPoolClient() *schema.Resource {
 					),
 				},
 			},
+			"token_validity_units": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"access_token": {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      cognitoidentityprovider.TimeUnitsTypeHours,
+							ValidateFunc: validation.StringInSlice(cognitoidentityprovider.TimeUnitsType_Values(), false),
+						},
+						"id_token": {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      cognitoidentityprovider.TimeUnitsTypeHours,
+							ValidateFunc: validation.StringInSlice(cognitoidentityprovider.TimeUnitsType_Values(), false),
+						},
+						"refresh_token": {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      cognitoidentityprovider.TimeUnitsTypeDays,
+							ValidateFunc: validation.StringInSlice(cognitoidentityprovider.TimeUnitsType_Values(), false),
+						},
+					},
+				},
+			},
 			"analytics_configuration": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -277,6 +304,10 @@ func resourceAwsCognitoUserPoolClientCreate(d *schema.ResourceData, meta interfa
 		params.AnalyticsConfiguration = expandAwsCognitoUserPoolClientAnalyticsConfig(v.([]interface{}))
 	}
 
+	if v, ok := d.GetOk("token_validity_units"); ok {
+		params.TokenValidityUnits = expandAwsCognitoUserPoolClientTokenValidityUnitsType(v.([]interface{}))
+	}
+
 	if v, ok := d.GetOk("prevent_user_existence_errors"); ok {
 		params.PreventUserExistenceErrors = aws.String(v.(string))
 	}
@@ -336,6 +367,10 @@ func resourceAwsCognitoUserPoolClientRead(d *schema.ResourceData, meta interface
 
 	if err := d.Set("analytics_configuration", flattenAwsCognitoUserPoolClientAnalyticsConfig(userPoolClient.AnalyticsConfiguration)); err != nil {
 		return fmt.Errorf("error setting analytics_configuration: %s", err)
+	}
+
+	if err := d.Set("token_validity_units", flattenAwsCognitoUserPoolClientTokenValidityUnitsType(userPoolClient.TokenValidityUnits)); err != nil {
+		return fmt.Errorf("error setting token_validity_units: %w", err)
 	}
 
 	return nil
@@ -413,6 +448,10 @@ func resourceAwsCognitoUserPoolClientUpdate(d *schema.ResourceData, meta interfa
 		params.AnalyticsConfiguration = expandAwsCognitoUserPoolClientAnalyticsConfig(v.([]interface{}))
 	}
 
+	if v, ok := d.GetOk("token_validity_units"); ok {
+		params.TokenValidityUnits = expandAwsCognitoUserPoolClientTokenValidityUnitsType(v.([]interface{}))
+	}
+
 	log.Printf("[DEBUG] Updating Cognito User Pool Client: %s", params)
 
 	_, err := conn.UpdateUserPoolClient(params)
@@ -485,6 +524,57 @@ func flattenAwsCognitoUserPoolClientAnalyticsConfig(analyticsConfig *cognitoiden
 		"external_id":      aws.StringValue(analyticsConfig.ExternalId),
 		"role_arn":         aws.StringValue(analyticsConfig.RoleArn),
 		"user_data_shared": aws.BoolValue(analyticsConfig.UserDataShared),
+	}
+
+	return []interface{}{m}
+}
+
+func expandAwsCognitoUserPoolClientTokenValidityUnitsType(l []interface{}) *cognitoidentityprovider.TokenValidityUnitsType {
+	if len(l) == 0 {
+		return nil
+	}
+
+	m := l[0].(map[string]interface{})
+
+	tokenValidityConfig := &cognitoidentityprovider.TokenValidityUnitsType{}
+
+	if v, ok := m["access_token"]; ok {
+		tokenValidityConfig.AccessToken = aws.String(v.(string))
+	}
+
+	if v, ok := m["id_token"]; ok {
+		tokenValidityConfig.IdToken = aws.String(v.(string))
+	}
+
+	if v, ok := m["refresh_token"]; ok {
+		tokenValidityConfig.RefreshToken = aws.String(v.(string))
+	}
+
+	return tokenValidityConfig
+}
+
+func flattenAwsCognitoUserPoolClientTokenValidityUnitsType(tokenValidityConfig *cognitoidentityprovider.TokenValidityUnitsType) []interface{} {
+	if tokenValidityConfig == nil {
+		return nil
+	}
+
+	//tokenValidityConfig is never nil and if everything is empty it causes diffs
+	if tokenValidityConfig.IdToken == nil && tokenValidityConfig.AccessToken == nil && tokenValidityConfig.RefreshToken == nil {
+		return nil
+	}
+
+	m := map[string]interface{}{}
+
+	if tokenValidityConfig.IdToken != nil {
+		m["id_token"] = aws.StringValue(tokenValidityConfig.IdToken)
+	}
+
+	if tokenValidityConfig.AccessToken != nil {
+		m["access_token"] = aws.StringValue(tokenValidityConfig.AccessToken)
+	}
+
+	if tokenValidityConfig.RefreshToken != nil {
+		m["refresh_token"] = aws.StringValue(tokenValidityConfig.RefreshToken)
 	}
 
 	return []interface{}{m}
