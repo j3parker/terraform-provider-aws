@@ -123,8 +123,9 @@ func TestAccAWSCloudTrail_serial(t *testing.T) {
 
 func testAccAWSCloudTrail_basic(t *testing.T) {
 	var trail cloudtrail.Trail
-	cloudTrailRandInt := acctest.RandInt()
-	resourceName := "aws_cloudtrail.foobar"
+	rName := acctest.RandomWithPrefix("tf-acc-test")
+	resourceName := "aws_cloudtrail.test"
+	s3ResourceName := "aws_s3_bucket.test"
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -132,13 +133,17 @@ func testAccAWSCloudTrail_basic(t *testing.T) {
 		CheckDestroy: testAccCheckAWSCloudTrailDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAWSCloudTrailConfig(cloudTrailRandInt),
+				Config: testAccAWSCloudTrailConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCloudTrailExists(resourceName, &trail),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					testAccCheckResourceAttrRegionalARN(resourceName, "arn", "cloudtrail", fmt.Sprintf("trail/%s", rName)),
 					resource.TestCheckResourceAttr(resourceName, "include_global_service_events", "true"),
 					resource.TestCheckResourceAttr(resourceName, "is_organization_trail", "false"),
-					testAccCheckCloudTrailLogValidationEnabled(resourceName, false, &trail),
 					resource.TestCheckResourceAttr(resourceName, "kms_key_id", ""),
+					resource.TestCheckResourceAttr(resourceName, "enable_log_file_validation", "false"),
+					resource.TestCheckResourceAttr(resourceName, "tags.%", "0"),
+					resource.TestCheckResourceAttrPair(resourceName, "s3_bucket_name", s3ResourceName, "id"),
 				),
 			},
 			{
@@ -147,9 +152,10 @@ func testAccAWSCloudTrail_basic(t *testing.T) {
 				ImportStateVerify: true,
 			},
 			{
-				Config: testAccAWSCloudTrailConfigModified(cloudTrailRandInt),
+				Config: testAccAWSCloudTrailConfigModified(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCloudTrailExists(resourceName, &trail),
+					testAccCheckResourceAttrRegionalARN(resourceName, "arn", "cloudtrail", fmt.Sprintf("trail/%s", rName)),
 					resource.TestCheckResourceAttr(resourceName, "s3_key_prefix", "prefix"),
 					resource.TestCheckResourceAttr(resourceName, "include_global_service_events", "false"),
 					testAccCheckCloudTrailLogValidationEnabled(resourceName, false, &trail),
@@ -197,7 +203,7 @@ func testAccAWSCloudTrail_cloudwatch(t *testing.T) {
 
 func testAccAWSCloudTrail_enable_logging(t *testing.T) {
 	var trail cloudtrail.Trail
-	cloudTrailRandInt := acctest.RandInt()
+	rName := acctest.RandomWithPrefix("tf-acc-test")
 	resourceName := "aws_cloudtrail.foobar"
 
 	resource.Test(t, resource.TestCase{
@@ -206,7 +212,7 @@ func testAccAWSCloudTrail_enable_logging(t *testing.T) {
 		CheckDestroy: testAccCheckAWSCloudTrailDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAWSCloudTrailConfig(cloudTrailRandInt),
+				Config: testAccAWSCloudTrailConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCloudTrailExists(resourceName, &trail),
 					// AWS will create the trail with logging turned off.
@@ -222,7 +228,7 @@ func testAccAWSCloudTrail_enable_logging(t *testing.T) {
 				ImportStateVerify: true,
 			},
 			{
-				Config: testAccAWSCloudTrailConfigModified(cloudTrailRandInt),
+				Config: testAccAWSCloudTrailConfigModified(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCloudTrailExists(resourceName, &trail),
 					testAccCheckCloudTrailLoggingEnabled(resourceName, false),
@@ -231,7 +237,7 @@ func testAccAWSCloudTrail_enable_logging(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccAWSCloudTrailConfig(cloudTrailRandInt),
+				Config: testAccAWSCloudTrailConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCloudTrailExists(resourceName, &trail),
 					testAccCheckCloudTrailLoggingEnabled(resourceName, true),
@@ -245,7 +251,7 @@ func testAccAWSCloudTrail_enable_logging(t *testing.T) {
 
 func testAccAWSCloudTrail_is_multi_region(t *testing.T) {
 	var trail cloudtrail.Trail
-	cloudTrailRandInt := acctest.RandInt()
+	rName := acctest.RandomWithPrefix("tf-acc-test")
 	resourceName := "aws_cloudtrail.foobar"
 
 	resource.Test(t, resource.TestCase{
@@ -254,7 +260,7 @@ func testAccAWSCloudTrail_is_multi_region(t *testing.T) {
 		CheckDestroy: testAccCheckAWSCloudTrailDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAWSCloudTrailConfig(cloudTrailRandInt),
+				Config: testAccAWSCloudTrailConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCloudTrailExists(resourceName, &trail),
 					resource.TestCheckResourceAttr(resourceName, "is_multi_region_trail", "false"),
@@ -263,7 +269,7 @@ func testAccAWSCloudTrail_is_multi_region(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccAWSCloudTrailConfigMultiRegion(cloudTrailRandInt),
+				Config: testAccAWSCloudTrailConfigMultiRegion(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCloudTrailExists(resourceName, &trail),
 					resource.TestCheckResourceAttr(resourceName, "is_multi_region_trail", "true"),
@@ -277,7 +283,7 @@ func testAccAWSCloudTrail_is_multi_region(t *testing.T) {
 				ImportStateVerify: true,
 			},
 			{
-				Config: testAccAWSCloudTrailConfig(cloudTrailRandInt),
+				Config: testAccAWSCloudTrailConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCloudTrailExists(resourceName, &trail),
 					resource.TestCheckResourceAttr(resourceName, "is_multi_region_trail", "false"),
@@ -291,7 +297,7 @@ func testAccAWSCloudTrail_is_multi_region(t *testing.T) {
 
 func testAccAWSCloudTrail_is_organization(t *testing.T) {
 	var trail cloudtrail.Trail
-	cloudTrailRandInt := acctest.RandInt()
+	rName := acctest.RandomWithPrefix("tf-acc-test")
 	resourceName := "aws_cloudtrail.foobar"
 
 	resource.Test(t, resource.TestCase{
@@ -300,7 +306,7 @@ func testAccAWSCloudTrail_is_organization(t *testing.T) {
 		CheckDestroy: testAccCheckAWSCloudTrailDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAWSCloudTrailConfigOrganization(cloudTrailRandInt),
+				Config: testAccAWSCloudTrailConfigOrganization(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCloudTrailExists(resourceName, &trail),
 					resource.TestCheckResourceAttr(resourceName, "is_organization_trail", "true"),
@@ -314,7 +320,7 @@ func testAccAWSCloudTrail_is_organization(t *testing.T) {
 				ImportStateVerify: true,
 			},
 			{
-				Config: testAccAWSCloudTrailConfig(cloudTrailRandInt),
+				Config: testAccAWSCloudTrailConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCloudTrailExists(resourceName, &trail),
 					resource.TestCheckResourceAttr(resourceName, "is_organization_trail", "false"),
@@ -694,17 +700,15 @@ func testAccCheckCloudTrailLoadTags(trail *cloudtrail.Trail, tags *[]*cloudtrail
 	}
 }
 
-func testAccAWSCloudTrailConfig(cloudTrailRandInt int) string {
+func testAccAWSCloudTrailConfigBase(rName string) string {
 	return fmt.Sprintf(`
-resource "aws_cloudtrail" "foobar" {
-  name           = "tf-trail-foobar-%d"
-  s3_bucket_name = aws_s3_bucket.foo.id
+resource "aws_s3_bucket" "test" {
+  bucket        = %[1]q
+  force_destroy = true
 }
 
-resource "aws_s3_bucket" "foo" {
-  bucket        = "tf-test-trail-%d"
-  force_destroy = true
-
+resource "aws_s3_bucket_policy" "test" {
+  bucket = aws_s3_bucket.test.id
   policy = <<POLICY
 {
   "Version": "2012-10-17",
@@ -714,14 +718,14 @@ resource "aws_s3_bucket" "foo" {
       "Effect": "Allow",
       "Principal": "*",
       "Action": "s3:GetBucketAcl",
-      "Resource": "arn:aws:s3:::tf-test-trail-%d"
+      "Resource": "${aws_s3_bucket.test.arn}"
     },
     {
       "Sid": "AWSCloudTrailWrite",
       "Effect": "Allow",
       "Principal": "*",
       "Action": "s3:PutObject",
-      "Resource": "arn:aws:s3:::tf-test-trail-%d/*",
+      "Resource": "${aws_s3_bucket.test.arn}/*",
       "Condition": {
         "StringEquals": {
           "s3:x-amz-acl": "bucket-owner-full-control"
@@ -732,51 +736,28 @@ resource "aws_s3_bucket" "foo" {
 }
 POLICY
 }
-`, cloudTrailRandInt, cloudTrailRandInt, cloudTrailRandInt, cloudTrailRandInt)
+`, rName)
 }
 
-func testAccAWSCloudTrailConfigModified(cloudTrailRandInt int) string {
-	return fmt.Sprintf(`
+func testAccAWSCloudTrailConfig(rName string) string {
+	return testAccAWSCloudTrailConfigBase(rName) + fmt.Sprintf(`
+resource "aws_cloudtrail" "test" {
+  name           = %[1]q
+  s3_bucket_name = aws_s3_bucket.test.id
+}
+`, rName)
+}
+
+func testAccAWSCloudTrailConfigModified(rName string) string {
+	return testAccAWSCloudTrailConfigBase(rName) + fmt.Sprintf(`
 resource "aws_cloudtrail" "foobar" {
-  name                          = "tf-trail-foobar-%d"
-  s3_bucket_name                = aws_s3_bucket.foo.id
+  name                          = %[1]q
+  s3_bucket_name                = aws_s3_bucket.test.id
   s3_key_prefix                 = "prefix"
   include_global_service_events = false
   enable_logging                = false
 }
-
-resource "aws_s3_bucket" "foo" {
-  bucket        = "tf-test-trail-%d"
-  force_destroy = true
-
-  policy = <<POLICY
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "AWSCloudTrailAclCheck",
-      "Effect": "Allow",
-      "Principal": "*",
-      "Action": "s3:GetBucketAcl",
-      "Resource": "arn:aws:s3:::tf-test-trail-%d"
-    },
-    {
-      "Sid": "AWSCloudTrailWrite",
-      "Effect": "Allow",
-      "Principal": "*",
-      "Action": "s3:PutObject",
-      "Resource": "arn:aws:s3:::tf-test-trail-%d/*",
-      "Condition": {
-        "StringEquals": {
-          "s3:x-amz-acl": "bucket-owner-full-control"
-        }
-      }
-    }
-  ]
-}
-POLICY
-}
-`, cloudTrailRandInt, cloudTrailRandInt, cloudTrailRandInt, cloudTrailRandInt)
+`, rName)
 }
 
 func testAccAWSCloudTrailConfigCloudWatch(randInt int) string {
@@ -963,92 +944,28 @@ POLICY
 `, randInt, randInt, randInt, randInt, randInt, randInt, randInt, randInt)
 }
 
-func testAccAWSCloudTrailConfigMultiRegion(cloudTrailRandInt int) string {
-	return fmt.Sprintf(`
-resource "aws_cloudtrail" "foobar" {
-  name                  = "tf-trail-foobar-%d"
-  s3_bucket_name        = aws_s3_bucket.foo.id
+func testAccAWSCloudTrailConfigMultiRegion(rName string) string {
+	return testAccAWSCloudTrailConfigBase(rName) + fmt.Sprintf(`
+resource "aws_cloudtrail" "test" {
+  name                  = %[1]q
+  s3_bucket_name        = aws_s3_bucket.test.id
   is_multi_region_trail = true
 }
-
-resource "aws_s3_bucket" "foo" {
-  bucket        = "tf-test-trail-%d"
-  force_destroy = true
-
-  policy = <<POLICY
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "AWSCloudTrailAclCheck",
-      "Effect": "Allow",
-      "Principal": "*",
-      "Action": "s3:GetBucketAcl",
-      "Resource": "arn:aws:s3:::tf-test-trail-%d"
-    },
-    {
-      "Sid": "AWSCloudTrailWrite",
-      "Effect": "Allow",
-      "Principal": "*",
-      "Action": "s3:PutObject",
-      "Resource": "arn:aws:s3:::tf-test-trail-%d/*",
-      "Condition": {
-        "StringEquals": {
-          "s3:x-amz-acl": "bucket-owner-full-control"
-        }
-      }
-    }
-  ]
-}
-POLICY
-}
-`, cloudTrailRandInt, cloudTrailRandInt, cloudTrailRandInt, cloudTrailRandInt)
+`, rName)
 }
 
-func testAccAWSCloudTrailConfigOrganization(cloudTrailRandInt int) string {
-	return fmt.Sprintf(`
+func testAccAWSCloudTrailConfigOrganization(rName string) string {
+	return testAccAWSCloudTrailConfigBase(rName) + fmt.Sprintf(`
 resource "aws_organizations_organization" "test" {
   aws_service_access_principals = ["cloudtrail.amazonaws.com"]
 }
 
-resource "aws_cloudtrail" "foobar" {
+resource "aws_cloudtrail" "test" {
   is_organization_trail = true
-  name                  = "tf-trail-foobar-%d"
-  s3_bucket_name        = aws_s3_bucket.foo.id
+  name                  = %[1]q
+  s3_bucket_name        = aws_s3_bucket.test.id
 }
-
-resource "aws_s3_bucket" "foo" {
-  bucket        = "tf-test-trail-%d"
-  force_destroy = true
-
-  policy = <<POLICY
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "AWSCloudTrailAclCheck",
-      "Effect": "Allow",
-      "Principal": "*",
-      "Action": "s3:GetBucketAcl",
-      "Resource": "arn:aws:s3:::tf-test-trail-%d"
-    },
-    {
-      "Sid": "AWSCloudTrailWrite",
-      "Effect": "Allow",
-      "Principal": "*",
-      "Action": "s3:PutObject",
-      "Resource": "arn:aws:s3:::tf-test-trail-%d/*",
-      "Condition": {
-        "StringEquals": {
-          "s3:x-amz-acl": "bucket-owner-full-control"
-        }
-      }
-    }
-  ]
-}
-POLICY
-}
-`, cloudTrailRandInt, cloudTrailRandInt, cloudTrailRandInt, cloudTrailRandInt)
+`, rName)
 }
 
 func testAccAWSCloudTrailConfig_logValidation(cloudTrailRandInt int) string {
