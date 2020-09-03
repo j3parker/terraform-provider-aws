@@ -171,7 +171,7 @@ func TestAccAWSOpsworksStack_CustomCookbooks_SetPrivateProperties(t *testing.T) 
 			{
 				Config: testAccAWSOpsworksStackConfig_CustomCookbooks_Set(stackName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckAWSOpsworksStackExists("aws_opsworks_stack.tf-acc", true, &opsstack),
+					testAccCheckAWSOpsworksStackExists(resourceName, true, &opsstack),
 					resource.TestCheckResourceAttr(resourceName, "name", stackName),
 					resource.TestCheckResourceAttr(resourceName, "default_availability_zone", "us-west-2a"),
 					resource.TestCheckResourceAttr(resourceName, "default_os", "Amazon Linux 2016.09"),
@@ -184,14 +184,8 @@ func TestAccAWSOpsworksStack_CustomCookbooks_SetPrivateProperties(t *testing.T) 
 					resource.TestCheckResourceAttr(resourceName, "custom_cookbooks_source.0.revision", "master"),
 					resource.TestCheckResourceAttr(resourceName, "custom_cookbooks_source.0.url", "https://github.com/aws/opsworks-example-cookbooks.git"),
 					resource.TestCheckResourceAttr(resourceName, "custom_cookbooks_source.0.username", "username"),
-					resource.TestCheckResourceAttr(
-						"aws_opsworks_stack.tf-acc",
-						"custom_cookbooks_source.0.password",
-						"password"),
-					resource.TestCheckResourceAttr(
-						"aws_opsworks_stack.tf-acc",
-						"custom_cookbooks_source.0.ssh_key",
-						sshKey),
+					resource.TestCheckResourceAttr(resourceName, "custom_cookbooks_source.0.password", "password"),
+					resource.TestCheckResourceAttr(resourceName, "custom_cookbooks_source.0.ssh_key", sshKey),
 				),
 			},
 		},
@@ -528,6 +522,7 @@ resource "aws_opsworks_stack" "tf-acc" {
   "key": "value"
 }
 EOF
+
   configuration_manager_version = "11.10"
   use_opsworks_security_groups  = false
 }
@@ -620,6 +615,7 @@ resource "aws_opsworks_stack" "tf-acc" {
   "key": "value"
 }
 EOF
+
   configuration_manager_version = "11.10"
   use_opsworks_security_groups  = false
 
@@ -716,6 +712,7 @@ resource "aws_opsworks_stack" "tf-acc" {
   "key": "value"
 }
 EOF
+
   configuration_manager_version = "11.10"
   use_opsworks_security_groups  = false
 
@@ -816,6 +813,7 @@ resource "aws_opsworks_stack" "tf-acc" {
   "key": "value"
 }
 EOF
+
   configuration_manager_version = "11.10"
   use_opsworks_security_groups  = false
 }
@@ -976,6 +974,7 @@ resource "aws_opsworks_stack" "tf-acc" {
   "key": "value"
 }
 EOF
+
   configuration_manager_version = "11.10"
   use_opsworks_security_groups  = false
 }
@@ -1087,6 +1086,7 @@ resource "aws_opsworks_stack" "tf-acc" {
   "key": "value"
 }
 EOF
+
   configuration_manager_version = "11.10"
   use_opsworks_security_groups  = false
   use_custom_cookbooks          = true
@@ -1210,6 +1210,7 @@ resource "aws_opsworks_stack" "tf-acc" {
   "key": "value"
 }
 EOF
+
   configuration_manager_version = "11.10"
   use_opsworks_security_groups  = false
   use_custom_cookbooks          = true
