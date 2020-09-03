@@ -208,7 +208,7 @@ func testAccAWSCloudTrail_cloudwatch(t *testing.T) {
 func testAccAWSCloudTrail_enable_logging(t *testing.T) {
 	var trail cloudtrail.Trail
 	rName := acctest.RandomWithPrefix("tf-acc-test")
-	resourceName := "aws_cloudtrail.foobar"
+	resourceName := "aws_cloudtrail.test"
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -256,7 +256,7 @@ func testAccAWSCloudTrail_enable_logging(t *testing.T) {
 func testAccAWSCloudTrail_is_multi_region(t *testing.T) {
 	var trail cloudtrail.Trail
 	rName := acctest.RandomWithPrefix("tf-acc-test")
-	resourceName := "aws_cloudtrail.foobar"
+	resourceName := "aws_cloudtrail.test"
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -302,7 +302,7 @@ func testAccAWSCloudTrail_is_multi_region(t *testing.T) {
 func testAccAWSCloudTrail_is_organization(t *testing.T) {
 	var trail cloudtrail.Trail
 	rName := acctest.RandomWithPrefix("tf-acc-test")
-	resourceName := "aws_cloudtrail.foobar"
+	resourceName := "aws_cloudtrail.test"
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t); testAccOrganizationsAccountPreCheck(t) },
@@ -339,7 +339,7 @@ func testAccAWSCloudTrail_is_organization(t *testing.T) {
 func testAccAWSCloudTrail_logValidation(t *testing.T) {
 	var trail cloudtrail.Trail
 	rName := acctest.RandomWithPrefix("tf-acc-test")
-	resourceName := "aws_cloudtrail.foobar"
+	resourceName := "aws_cloudtrail.test"
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -889,22 +889,26 @@ resource "aws_cloudtrail" "test" {
 
 func testAccAWSCloudTrailConfig_logValidation(rName string) string {
 	return testAccAWSCloudTrailConfigBase(rName) + fmt.Sprintf(`
-resource "aws_cloudtrail" "foobar" {
+resource "aws_cloudtrail" "test" {
   name                          = %[1]q
   s3_bucket_name                = aws_s3_bucket.test.id
   is_multi_region_trail         = true
   include_global_service_events = true
   enable_log_file_validation    = true
+
+  depends_on = [aws_s3_bucket_policy.test]
 }
 `, rName)
 }
 
 func testAccAWSCloudTrailConfig_logValidationModified(rName string) string {
 	return testAccAWSCloudTrailConfigBase(rName) + fmt.Sprintf(`
-resource "aws_cloudtrail" "foobar" {
+resource "aws_cloudtrail" "test" {
   name                          = %[1]q
   s3_bucket_name                = aws_s3_bucket.test.id
   include_global_service_events = true
+
+  depends_on = [aws_s3_bucket_policy.test]
 }
 `, rName)
 }
