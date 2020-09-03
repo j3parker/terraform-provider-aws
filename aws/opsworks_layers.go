@@ -278,9 +278,10 @@ func (lt *opsworksLayerType) SchemaResource() *schema.Resource {
 									Optional: true,
 								},
 								"encoding": {
-									Type:     schema.TypeString,
-									Optional: true,
-									Default:  opsworks.CloudWatchLogsEncodingUtf8,
+									Type:         schema.TypeString,
+									Optional:     true,
+									Default:      opsworks.CloudWatchLogsEncodingUtf8,
+									ValidateFunc: validation.StringInSlice(opsworks.CloudWatchLogsEncoding_Values(), false),
 								},
 								"file": {
 									Type:     schema.TypeString,
@@ -292,13 +293,10 @@ func (lt *opsworksLayerType) SchemaResource() *schema.Resource {
 									Default:  "1",
 								},
 								"initial_position": {
-									Type:     schema.TypeString,
-									Optional: true,
-									Default:  opsworks.CloudWatchLogsInitialPositionStartOfFile,
-									ValidateFunc: validation.StringInSlice([]string{
-										opsworks.CloudWatchLogsInitialPositionEndOfFile,
-										opsworks.CloudWatchLogsInitialPositionStartOfFile,
-									}, false),
+									Type:         schema.TypeString,
+									Optional:     true,
+									Default:      opsworks.CloudWatchLogsInitialPositionStartOfFile,
+									ValidateFunc: validation.StringInSlice(opsworks.CloudWatchLogsInitialPosition_Values(), false),
 								},
 								"log_group_name": {
 									Type:     schema.TypeString,
@@ -309,12 +307,9 @@ func (lt *opsworksLayerType) SchemaResource() *schema.Resource {
 									Optional: true,
 								},
 								"timezone": {
-									Type:     schema.TypeString,
-									Optional: true,
-									ValidateFunc: validation.StringInSlice([]string{
-										opsworks.CloudWatchLogsTimeZoneLocal,
-										opsworks.CloudWatchLogsTimeZoneUtc,
-									}, false),
+									Type:         schema.TypeString,
+									Optional:     true,
+									ValidateFunc: validation.StringInSlice(opsworks.CloudWatchLogsTimeZone_Values(), false),
 								},
 							},
 						},
