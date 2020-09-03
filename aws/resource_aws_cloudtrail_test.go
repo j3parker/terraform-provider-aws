@@ -168,8 +168,9 @@ func testAccAWSCloudTrail_basic(t *testing.T) {
 
 func testAccAWSCloudTrail_cloudwatch(t *testing.T) {
 	var trail cloudtrail.Trail
-	randInt := acctest.RandInt()
+	rName := acctest.RandomWithPrefix("tf-acc-test")
 	resourceName := "aws_cloudtrail.test"
+	roleResourceName := "aws_iam_role.test"
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -177,11 +178,11 @@ func testAccAWSCloudTrail_cloudwatch(t *testing.T) {
 		CheckDestroy: testAccCheckAWSCloudTrailDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAWSCloudTrailConfigCloudWatch(randInt),
+				Config: testAccAWSCloudTrailConfigCloudWatch(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCloudTrailExists(resourceName, &trail),
 					resource.TestCheckResourceAttrSet(resourceName, "cloud_watch_logs_group_arn"),
-					resource.TestCheckResourceAttrSet(resourceName, "cloud_watch_logs_role_arn"),
+					resource.TestCheckResourceAttrPair(resourceName, "cloud_watch_logs_role_arn", roleResourceName, "arn"),
 				),
 			},
 			{
@@ -190,11 +191,11 @@ func testAccAWSCloudTrail_cloudwatch(t *testing.T) {
 				ImportStateVerify: true,
 			},
 			{
-				Config: testAccAWSCloudTrailConfigCloudWatchModified(randInt),
+				Config: testAccAWSCloudTrailConfigCloudWatchModified(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckCloudTrailExists(resourceName, &trail),
 					resource.TestCheckResourceAttrSet(resourceName, "cloud_watch_logs_group_arn"),
-					resource.TestCheckResourceAttrSet(resourceName, "cloud_watch_logs_role_arn"),
+					resource.TestCheckResourceAttrPair(resourceName, "cloud_watch_logs_role_arn", roleResourceName, "arn"),
 				),
 			},
 		},
@@ -744,70 +745,43 @@ func testAccAWSCloudTrailConfig(rName string) string {
 resource "aws_cloudtrail" "test" {
   name           = %[1]q
   s3_bucket_name = aws_s3_bucket.test.id
+
+  depends_on = [aws_s3_bucket_policy.test]
 }
 `, rName)
 }
 
 func testAccAWSCloudTrailConfigModified(rName string) string {
 	return testAccAWSCloudTrailConfigBase(rName) + fmt.Sprintf(`
-resource "aws_cloudtrail" "foobar" {
+resource "aws_cloudtrail" "test" {
   name                          = %[1]q
   s3_bucket_name                = aws_s3_bucket.test.id
   s3_key_prefix                 = "prefix"
   include_global_service_events = false
   enable_logging                = false
+
+  depends_on = [aws_s3_bucket_policy.test]
 }
 `, rName)
 }
 
-func testAccAWSCloudTrailConfigCloudWatch(randInt int) string {
-	return fmt.Sprintf(`
+func testAccAWSCloudTrailConfigCloudWatch(rName string) string {
+	return testAccAWSCloudTrailConfigBase(rName) + fmt.Sprintf(`
 resource "aws_cloudtrail" "test" {
-  name           = "tf-acc-test-%d"
-  s3_bucket_name = aws_s3_bucket.test.id
-
+  name                       = %[1]q
+  s3_bucket_name             = aws_s3_bucket.test.id
   cloud_watch_logs_group_arn = "${aws_cloudwatch_log_group.test.arn}:*"
   cloud_watch_logs_role_arn  = aws_iam_role.test.arn
-}
 
-resource "aws_s3_bucket" "test" {
-  bucket        = "tf-test-trail-%d"
-  force_destroy = true
-
-  policy = <<POLICY
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "AWSCloudTrailAclCheck",
-      "Effect": "Allow",
-      "Principal": "*",
-      "Action": "s3:GetBucketAcl",
-      "Resource": "arn:aws:s3:::tf-test-trail-%d"
-    },
-    {
-      "Sid": "AWSCloudTrailWrite",
-      "Effect": "Allow",
-      "Principal": "*",
-      "Action": "s3:PutObject",
-      "Resource": "arn:aws:s3:::tf-test-trail-%d/*",
-      "Condition": {
-        "StringEquals": {
-          "s3:x-amz-acl": "bucket-owner-full-control"
-        }
-      }
-    }
-  ]
-}
-POLICY
+  depends_on = [aws_s3_bucket_policy.test]
 }
 
 resource "aws_cloudwatch_log_group" "test" {
-  name = "tf-acc-test-cloudtrail-%d"
+  name = %[1]q
 }
 
 resource "aws_iam_role" "test" {
-  name = "tf-acc-test-cloudtrail-%d"
+  name = %[1]q
 
   assume_role_policy = <<POLICY
 {
@@ -827,7 +801,7 @@ POLICY
 }
 
 resource "aws_iam_role_policy" "test" {
-  name = "tf-acc-test-cloudtrail-%d"
+  name =  %[1]q
   role = aws_iam_role.test.id
 
   policy = <<POLICY
@@ -847,61 +821,30 @@ resource "aws_iam_role_policy" "test" {
 }
 POLICY
 }
-`, randInt, randInt, randInt, randInt, randInt, randInt, randInt)
+`, rName)
 }
 
-func testAccAWSCloudTrailConfigCloudWatchModified(randInt int) string {
-	return fmt.Sprintf(`
+func testAccAWSCloudTrailConfigCloudWatchModified(rName string) string {
+	return testAccAWSCloudTrailConfigBase(rName) + fmt.Sprintf(`
 resource "aws_cloudtrail" "test" {
-  name           = "tf-acc-test-%d"
+  name           = %[1]q
   s3_bucket_name = aws_s3_bucket.test.id
-
-  cloud_watch_logs_group_arn = "${aws_cloudwatch_log_group.second.arn}:*"
+  cloud_watch_logs_group_arn = "${aws_cloudwatch_log_group.test2.arn}:*"
   cloud_watch_logs_role_arn  = aws_iam_role.test.arn
-}
 
-resource "aws_s3_bucket" "test" {
-  bucket        = "tf-test-trail-%d"
-  force_destroy = true
-
-  policy = <<POLICY
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "AWSCloudTrailAclCheck",
-      "Effect": "Allow",
-      "Principal": "*",
-      "Action": "s3:GetBucketAcl",
-      "Resource": "arn:aws:s3:::tf-test-trail-%d"
-    },
-    {
-      "Sid": "AWSCloudTrailWrite",
-      "Effect": "Allow",
-      "Principal": "*",
-      "Action": "s3:PutObject",
-      "Resource": "arn:aws:s3:::tf-test-trail-%d/*",
-      "Condition": {
-        "StringEquals": {
-          "s3:x-amz-acl": "bucket-owner-full-control"
-        }
-      }
-    }
-  ]
-}
-POLICY
+  depends_on = [aws_s3_bucket_policy.test]
 }
 
 resource "aws_cloudwatch_log_group" "test" {
-  name = "tf-acc-test-cloudtrail-%d"
+  name = %[1]q
 }
 
-resource "aws_cloudwatch_log_group" "second" {
-  name = "tf-acc-test-cloudtrail-second-%d"
+resource "aws_cloudwatch_log_group" "test2" {
+  name = "%[1]s-2"
 }
 
 resource "aws_iam_role" "test" {
-  name = "tf-acc-test-cloudtrail-%d"
+  name = %[1]q
 
   assume_role_policy = <<POLICY
 {
@@ -921,7 +864,7 @@ POLICY
 }
 
 resource "aws_iam_role_policy" "test" {
-  name = "tf-acc-test-cloudtrail-%d"
+  name = %[1]q
   role = aws_iam_role.test.id
 
   policy = <<POLICY
@@ -935,13 +878,13 @@ resource "aws_iam_role_policy" "test" {
         "logs:CreateLogStream",
         "logs:PutLogEvents"
       ],
-      "Resource": "${aws_cloudwatch_log_group.second.arn}:*"
+      "Resource": "${aws_cloudwatch_log_group.test2.arn}:*"
     }
   ]
 }
 POLICY
 }
-`, randInt, randInt, randInt, randInt, randInt, randInt, randInt, randInt)
+`, rName)
 }
 
 func testAccAWSCloudTrailConfigMultiRegion(rName string) string {
@@ -950,6 +893,8 @@ resource "aws_cloudtrail" "test" {
   name                  = %[1]q
   s3_bucket_name        = aws_s3_bucket.test.id
   is_multi_region_trail = true
+
+  depends_on = [aws_s3_bucket_policy.test]
 }
 `, rName)
 }
@@ -964,6 +909,8 @@ resource "aws_cloudtrail" "test" {
   is_organization_trail = true
   name                  = %[1]q
   s3_bucket_name        = aws_s3_bucket.test.id
+
+  depends_on = [aws_s3_bucket_policy.test]
 }
 `, rName)
 }
