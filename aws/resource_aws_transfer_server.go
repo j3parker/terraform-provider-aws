@@ -36,14 +36,10 @@ func resourceAwsTransferServer() *schema.Resource {
 			},
 
 			"endpoint_type": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Default:  transfer.EndpointTypePublic,
-				ValidateFunc: validation.StringInSlice([]string{
-					transfer.EndpointTypePublic,
-					transfer.EndpointTypeVpc,
-					transfer.EndpointTypeVpcEndpoint,
-				}, false),
+				Type:         schema.TypeString,
+				Optional:     true,
+				Default:      transfer.EndpointTypePublic,
+				ValidateFunc: validation.StringInSlice(transfer.EndpointType_Values(), false),
 			},
 
 			"endpoint_details": {
@@ -106,14 +102,11 @@ func resourceAwsTransferServer() *schema.Resource {
 			},
 
 			"identity_provider_type": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
-				Default:  transfer.IdentityProviderTypeServiceManaged,
-				ValidateFunc: validation.StringInSlice([]string{
-					transfer.IdentityProviderTypeServiceManaged,
-					transfer.IdentityProviderTypeApiGateway,
-				}, false),
+				Type:         schema.TypeString,
+				Optional:     true,
+				ForceNew:     true,
+				Default:      transfer.IdentityProviderTypeServiceManaged,
+				ValidateFunc: validation.StringInSlice(transfer.IdentityProviderType_Values(), false),
 			},
 
 			"logging_role": {
@@ -126,6 +119,16 @@ func resourceAwsTransferServer() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  false,
+			},
+			"security_policy_name": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "TransferSecurityPolicy-2018-11",
+				ValidateFunc: validation.StringInSlice([]string{
+					"TransferSecurityPolicy-2018-11",
+					"TransferSecurityPolicy-2020-06",
+					"TransferSecurityPolicy-FIPS-2020-06",
+				}, false),
 			},
 
 			"tags": tagsSchema(),
@@ -168,6 +171,10 @@ func resourceAwsTransferServerCreate(d *schema.ResourceData, meta interface{}) e
 		createOpts.EndpointType = aws.String(attr.(string))
 	}
 
+	if attr, ok := d.GetOk("security_policy_name"); ok {
+		createOpts.SecurityPolicyName = aws.String(attr.(string))
+	}
+
 	if attr, ok := d.GetOk("endpoint_details"); ok {
 		createOpts.EndpointDetails = expandTransferServerEndpointDetails(attr.([]interface{}))
 
@@ -190,7 +197,7 @@ func resourceAwsTransferServerCreate(d *schema.ResourceData, meta interface{}) e
 		return fmt.Errorf("Error creating Transfer Server: %s", err)
 	}
 
-	d.SetId(*resp.ServerId)
+	d.SetId(aws.StringValue(resp.ServerId))
 
 	stateChangeConf := &resource.StateChangeConf{
 		Pending: []string{transfer.StateStarting},
@@ -288,6 +295,7 @@ func resourceAwsTransferServerRead(d *schema.ResourceData, meta interface{}) err
 	d.Set("identity_provider_type", resp.Server.IdentityProviderType)
 	d.Set("logging_role", resp.Server.LoggingRole)
 	d.Set("host_key_fingerprint", resp.Server.HostKeyFingerprint)
+	d.Set("security_policy_name", resp.Server.SecurityPolicyName)
 
 	if err := d.Set("tags", keyvaluetags.TransferKeyValueTags(resp.Server.Tags).IgnoreAws().IgnoreConfig(ignoreTagsConfig).Map()); err != nil {
 		return fmt.Errorf("Error setting tags: %s", err)
@@ -306,6 +314,11 @@ func resourceAwsTransferServerUpdate(d *schema.ResourceData, meta interface{}) e
 	if d.HasChange("logging_role") {
 		updateFlag = true
 		updateOpts.LoggingRole = aws.String(d.Get("logging_role").(string))
+	}
+
+	if d.HasChange("security_policy_name") {
+		updateFlag = true
+		updateOpts.SecurityPolicyName = aws.String(d.Get("security_policy_name").(string))
 	}
 
 	if d.HasChanges("invocation_role", "url") {
