@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/terraform-providers/terraform-provider-aws/aws/internal/keyvaluetags"
+	"github.com/terraform-providers/terraform-provider-aws/aws/internal/service/sagemaker/waiter"
 )
 
 func resourceAwsSagemakerNotebookInstance() *schema.Resource {
@@ -37,13 +38,15 @@ func resourceAwsSagemakerNotebookInstance() *schema.Resource {
 			},
 
 			"role_arn": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:         schema.TypeString,
+				Required:     true,
+				ValidateFunc: validateArn,
 			},
 
 			"instance_type": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:         schema.TypeString,
+				Required:     true,
+				ValidateFunc: validation.StringInSlice(sagemaker.InstanceType_Values(), false),
 			},
 
 			"subnet_id": {
@@ -71,27 +74,21 @@ func resourceAwsSagemakerNotebookInstance() *schema.Resource {
 			"lifecycle_config_name": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 
 			"root_access": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
-				Default:  sagemaker.RootAccessEnabled,
-				ValidateFunc: validation.StringInSlice(
-					sagemaker.RootAccess_Values(), false),
+				Type:         schema.TypeString,
+				Optional:     true,
+				Default:      sagemaker.RootAccessEnabled,
+				ValidateFunc: validation.StringInSlice(sagemaker.RootAccess_Values(), false),
 			},
 
 			"direct_internet_access": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
-				Default:  sagemaker.DirectInternetAccessEnabled,
-				ValidateFunc: validation.StringInSlice([]string{
-					sagemaker.DirectInternetAccessDisabled,
-					sagemaker.DirectInternetAccessEnabled,
-				}, false),
+				Type:         schema.TypeString,
+				Optional:     true,
+				ForceNew:     true,
+				Default:      sagemaker.DirectInternetAccessEnabled,
+				ValidateFunc: validation.StringInSlice(sagemaker.DirectInternetAccess_Values(), false),
 			},
 
 			"tags": tagsSchema(),
@@ -144,19 +141,8 @@ func resourceAwsSagemakerNotebookInstanceCreate(d *schema.ResourceData, meta int
 	d.SetId(name)
 	log.Printf("[INFO] sagemaker notebook instance ID: %s", d.Id())
 
-	stateConf := &resource.StateChangeConf{
-		Pending: []string{
-			sagemaker.NotebookInstanceStatusUpdating,
-			sagemaker.NotebookInstanceStatusPending,
-			sagemaker.NotebookInstanceStatusStopped,
-		},
-		Target:  []string{sagemaker.NotebookInstanceStatusInService},
-		Refresh: sagemakerNotebookInstanceStateRefreshFunc(conn, d.Id()),
-		Timeout: 10 * time.Minute,
-	}
-	_, err = stateConf.WaitForState()
-	if err != nil {
-		return fmt.Errorf("error waiting for sagemaker notebook instance (%s) to create: %s", d.Id(), err)
+	if _, err := waiter.NotebookInstanceInService(conn, d.Id()); err != nil {
+		return fmt.Errorf("error waiting for sagemaker notebook instance (%s) to create: %w", d.Id(), err)
 	}
 
 	return resourceAwsSagemakerNotebookInstanceRead(d, meta)
@@ -256,6 +242,21 @@ func resourceAwsSagemakerNotebookInstanceUpdate(d *schema.ResourceData, meta int
 		hasChanged = true
 	}
 
+	if d.HasChange("lifecycle_config_name") {
+		if v, ok := d.GetOk("lifecycle_config_name"); ok {
+			updateOpts.LifecycleConfigName = aws.String(v.(string))
+		} else {
+			updateOpts.DisassociateLifecycleConfig = aws.Bool(true)
+		}
+		updateOpts.InstanceType = aws.String(d.Get("instance_type").(string))
+		hasChanged = true
+	}
+
+	if d.HasChange("root_access") {
+		updateOpts.RootAccess = aws.String(d.Get("root_access").(string))
+		hasChanged = true
+	}
+
 	if hasChanged {
 
 		// Stop notebook
@@ -270,17 +271,8 @@ func resourceAwsSagemakerNotebookInstanceUpdate(d *schema.ResourceData, meta int
 			return fmt.Errorf("error updating sagemaker notebook instance: %s", err)
 		}
 
-		stateConf := &resource.StateChangeConf{
-			Pending: []string{
-				sagemaker.NotebookInstanceStatusUpdating,
-			},
-			Target:  []string{sagemaker.NotebookInstanceStatusStopped},
-			Refresh: sagemakerNotebookInstanceStateRefreshFunc(conn, d.Id()),
-			Timeout: 10 * time.Minute,
-		}
-		_, err := stateConf.WaitForState()
-		if err != nil {
-			return fmt.Errorf("error waiting for sagemaker notebook instance (%s) to update: %s", d.Id(), err)
+		if _, err := waiter.NotebookInstanceStopped(conn, d.Id()); err != nil {
+			return fmt.Errorf("error waiting for sagemaker notebook instance (%s) to stop: %w", d.Id(), err)
 		}
 
 		// Restart if needed
@@ -323,19 +315,8 @@ func resourceAwsSagemakerNotebookInstanceUpdate(d *schema.ResourceData, meta int
 				return fmt.Errorf("Error waiting for sagemaker notebook instance to start: %s", err)
 			}
 
-			stateConf = &resource.StateChangeConf{
-				Pending: []string{
-					sagemaker.NotebookInstanceStatusUpdating,
-					sagemaker.NotebookInstanceStatusPending,
-					sagemaker.NotebookInstanceStatusStopped,
-				},
-				Target:  []string{sagemaker.NotebookInstanceStatusInService},
-				Refresh: sagemakerNotebookInstanceStateRefreshFunc(conn, d.Id()),
-				Timeout: 10 * time.Minute,
-			}
-			_, err = stateConf.WaitForState()
-			if err != nil {
-				return fmt.Errorf("error waiting for sagemaker notebook instance (%s) to start after update: %s", d.Id(), err)
+			if _, err := waiter.NotebookInstanceInService(conn, d.Id()); err != nil {
+				return fmt.Errorf("error waiting for sagemaker notebook instance (%s) to to start after update: %w", d.Id(), err)
 			}
 		}
 	}
@@ -370,17 +351,11 @@ func resourceAwsSagemakerNotebookInstanceDelete(d *schema.ResourceData, meta int
 		return fmt.Errorf("error trying to delete sagemaker notebook instance (%s): %s", d.Id(), err)
 	}
 
-	stateConf := &resource.StateChangeConf{
-		Pending: []string{
-			sagemaker.NotebookInstanceStatusDeleting,
-		},
-		Target:  []string{""},
-		Refresh: sagemakerNotebookInstanceStateRefreshFunc(conn, d.Id()),
-		Timeout: 10 * time.Minute,
-	}
-	_, err = stateConf.WaitForState()
-	if err != nil {
-		return fmt.Errorf("error waiting for sagemaker notebook instance (%s) to delete: %s", d.Id(), err)
+	if _, err := waiter.NotebookInstanceDeleted(conn, d.Id()); err != nil {
+		if isAWSErr(err, "ValidationException", "RecordNotFound") {
+			return nil
+		}
+		return fmt.Errorf("error waiting for sagemaker notebook instance (%s) to delete: %w", d.Id(), err)
 	}
 
 	return nil
