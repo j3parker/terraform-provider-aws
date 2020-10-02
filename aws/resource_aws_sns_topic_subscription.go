@@ -217,23 +217,23 @@ func resourceAwsSnsTopicSubscriptionDelete(d *schema.ResourceData, meta interfac
 
 // Assembles supplied attributes into a single map - empty/default values are excluded from the map
 func getResourceAttributes(d *schema.ResourceData) (output map[string]*string) {
-	delivery_policy := d.Get("delivery_policy").(string)
-	filter_policy := d.Get("filter_policy").(string)
-	raw_message_delivery := d.Get("raw_message_delivery").(bool)
+	deliveryPolicy := d.Get("delivery_policy").(string)
+	filterPolicy := d.Get("filter_policy").(string)
+	rawMessageDelivery := d.Get("raw_message_delivery").(bool)
 
 	// Collect attributes if available
 	attributes := map[string]*string{}
 
-	if delivery_policy != "" {
-		attributes["DeliveryPolicy"] = aws.String(delivery_policy)
+	if deliveryPolicy != "" {
+		attributes["DeliveryPolicy"] = aws.String(deliveryPolicy)
 	}
 
-	if filter_policy != "" {
-		attributes["FilterPolicy"] = aws.String(filter_policy)
+	if filterPolicy != "" {
+		attributes["FilterPolicy"] = aws.String(filterPolicy)
 	}
 
-	if raw_message_delivery {
-		attributes["RawMessageDelivery"] = aws.String(fmt.Sprintf("%t", raw_message_delivery))
+	if rawMessageDelivery {
+		attributes["RawMessageDelivery"] = aws.String(fmt.Sprintf("%t", rawMessageDelivery))
 	}
 
 	return attributes
