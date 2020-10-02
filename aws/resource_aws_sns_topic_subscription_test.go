@@ -472,7 +472,7 @@ resource "aws_sns_topic_subscription" "test" {
   topic_arn     = aws_sns_topic.test_topic.arn
   protocol      = "sqs"
   endpoint      = aws_sqs_queue.test_queue.arn
-  filter_policy = %s
+  filter_policy = %[2]q
 }
 `, rName, policy)
 }
@@ -488,7 +488,7 @@ resource "aws_sqs_queue" "test" {
 }
 
 resource "aws_sns_topic_subscription" "test" {
-  delivery_policy = %s
+  delivery_policy = %[2]q
   endpoint        = aws_sqs_queue.test_queue.arn
   protocol        = "sqs"
   topic_arn       = aws_sns_topic.test_topic.arn
@@ -586,7 +586,7 @@ EOF
 }
 
 resource "aws_iam_role_policy" "policy" {
-  name = "tf-acc-test-sns-%d"
+  name = %[1]q
   role = aws_iam_role.iam_for_lambda.id
 
   policy = <<EOF
@@ -615,7 +615,7 @@ resource "aws_lambda_permission" "test" {
 
 resource "aws_lambda_function" "test" {
   filename         = "test-fixtures/lambda_confirm_sns.zip"
-  function_name    = "tf-acc-test-sns-%d"
+  function_name    = %[1]q
   role             = aws_iam_role.iam_for_lambda.arn
   handler          = "main.confirm_subscription"
   source_code_hash = filebase64sha256("test-fixtures/lambda_confirm_sns.zip")
@@ -710,7 +710,7 @@ EOF
 }
 
 resource "aws_iam_role_policy" "policy" {
-  name = "tf-acc-test-sns-%d"
+  name = %[1]q
   role = aws_iam_role.iam_for_lambda.id
 
   policy = <<EOF
@@ -739,7 +739,7 @@ resource "aws_lambda_permission" "test" {
 
 resource "aws_lambda_function" "lambda" {
   filename         = "test-fixtures/lambda_confirm_sns.zip"
-  function_name    = "tf-acc-test-sns-%d"
+  function_name    = %[1]q
   role             = aws_iam_role.iam_for_lambda.arn
   handler          = "main.confirm_subscription"
   source_code_hash = filebase64sha256("test-fixtures/lambda_confirm_sns.zip")
@@ -774,7 +774,7 @@ EOF
 }
 
 resource "aws_iam_role_policy" "invocation_policy" {
-  name = "tf-acc-test-authorizer-%d"
+  name = %[1]q
   role = aws_iam_role.invocation_role.id
 
   policy = <<EOF
@@ -792,7 +792,7 @@ EOF
 }
 
 resource "aws_api_gateway_authorizer" "test" {
-  name                   = "tf-acc-test-api-gw-authorizer-%d"
+  name                   = %[1]q
   rest_api_id            = aws_api_gateway_rest_api.test.id
   authorizer_uri         = aws_lambda_function.authorizer.invoke_arn
   authorizer_credentials = aws_iam_role.invocation_role.arn
@@ -801,7 +801,7 @@ resource "aws_api_gateway_authorizer" "test" {
 resource "aws_lambda_function" "authorizer" {
   filename         = "test-fixtures/lambda_basic_authorizer.zip"
   source_code_hash = filebase64sha256("test-fixtures/lambda_basic_authorizer.zip")
-  function_name    = "tf-acc-test-authorizer-%d"
+  function_name    = %[1]q
   role             = aws_iam_role.iam_for_lambda.arn
   handler          = "main.authenticate"
   runtime          = "nodejs12.x"
@@ -832,7 +832,7 @@ resource "aws_sns_topic_subscription" "test" {
   depends_on             = [aws_lambda_permission.apigw_lambda]
   topic_arn              = aws_sns_topic.test_topic.arn
   protocol               = "https"
-  endpoint               = replace(aws_api_gateway_deployment.test.invoke_url, "https://", "https://%s:%s@")
+  endpoint               = replace(aws_api_gateway_deployment.test.invoke_url, "https://", "https://%[2]s:%[3]s@")
   endpoint_auto_confirms = true
 }
 `, rName, username, password)

@@ -9,18 +9,11 @@ import (
 	"strings"
 	"time"
 
-<<<<<<< HEAD
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/structure"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-=======
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/structure"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/terraform-providers/terraform-provider-aws/aws/internal/service/sns/waiter"
->>>>>>> e16fcc21c... move waiter to its own package
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
@@ -246,7 +239,7 @@ func getResourceAttributes(d *schema.ResourceData) (output map[string]*string) {
 	return attributes
 }
 
-func subscribeToSNSTopic(d *schema.ResourceData, snsconn *sns.SNS) (output *sns.SubscribeOutput, err error) {
+func subscribeToSNSTopic(d *schema.ResourceData, conn *sns.SNS) (output *sns.SubscribeOutput, err error) {
 	protocol := d.Get("protocol").(string)
 	endpoint := d.Get("endpoint").(string)
 	topic_arn := d.Get("topic_arn").(string)
@@ -254,11 +247,11 @@ func subscribeToSNSTopic(d *schema.ResourceData, snsconn *sns.SNS) (output *sns.
 	confirmation_timeout_in_minutes := d.Get("confirmation_timeout_in_minutes").(int)
 	attributes := getResourceAttributes(d)
 
-	if strings.Contains(protocol, "http") && !endpointAutoConfirms {
+	if strings.Contains(protocol, "http") && !endpoint_auto_confirms {
 		return nil, fmt.Errorf("Protocol http/https is only supported for endpoints which auto confirms!")
 	}
 
-	log.Printf("[DEBUG] SNS create topic subscription: %s (%s) @ '%s'", endpoint, protocol, topicArn)
+	log.Printf("[DEBUG] SNS create topic subscription: %s (%s) @ '%s'", endpoint, protocol, topic_arn)
 
 	req := &sns.SubscribeInput{
 		Protocol:   aws.String(protocol),
@@ -272,14 +265,14 @@ func subscribeToSNSTopic(d *schema.ResourceData, snsconn *sns.SNS) (output *sns.
 		return nil, fmt.Errorf("Error creating SNS topic subscription: %s", err)
 	}
 
-	log.Printf("[DEBUG] Finished subscribing to topic %s with subscription arn %s", topicArn,
+	log.Printf("[DEBUG] Finished subscribing to topic %s with subscription arn %s", topic_arn,
 		aws.StringValue(output.SubscriptionArn))
 
 	if strings.Contains(protocol, "http") && subscriptionHasPendingConfirmation(output.SubscriptionArn) {
 
-		log.Printf("[DEBUG] SNS create topic subscription is pending so fetching the subscription list for topic : %s (%s) @ '%s'", endpoint, protocol, topicArn)
+		log.Printf("[DEBUG] SNS create topic subscription is pending so fetching the subscription list for topic : %s (%s) @ '%s'", endpoint, protocol, topic_arn)
 
-		err = resource.Retry(time.Duration(confirmationTimeoutInMinutes)*time.Minute, func() *resource.RetryError {
+		err = resource.Retry(time.Duration(confirmation_timeout_in_minutes)*time.Minute, func() *resource.RetryError {
 
 			subscription, err := findSubscriptionByNonID(d, conn)
 
