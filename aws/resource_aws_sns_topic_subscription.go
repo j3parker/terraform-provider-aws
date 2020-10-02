@@ -242,21 +242,21 @@ func getResourceAttributes(d *schema.ResourceData) (output map[string]*string) {
 func subscribeToSNSTopic(d *schema.ResourceData, conn *sns.SNS) (output *sns.SubscribeOutput, err error) {
 	protocol := d.Get("protocol").(string)
 	endpoint := d.Get("endpoint").(string)
-	topic_arn := d.Get("topic_arn").(string)
-	endpoint_auto_confirms := d.Get("endpoint_auto_confirms").(bool)
-	confirmation_timeout_in_minutes := d.Get("confirmation_timeout_in_minutes").(int)
+	topicArn := d.Get("topic_arn").(string)
+	endpointAutoConfirms := d.Get("endpoint_auto_confirms").(bool)
+	confirmationTimeoutInMinutes := d.Get("confirmation_timeout_in_minutes").(int)
 	attributes := getResourceAttributes(d)
 
-	if strings.Contains(protocol, "http") && !endpoint_auto_confirms {
+	if strings.Contains(protocol, "http") && !endpointAutoConfirms {
 		return nil, fmt.Errorf("Protocol http/https is only supported for endpoints which auto confirms!")
 	}
 
-	log.Printf("[DEBUG] SNS create topic subscription: %s (%s) @ '%s'", endpoint, protocol, topic_arn)
+	log.Printf("[DEBUG] SNS create topic subscription: %s (%s) @ '%s'", endpoint, protocol, topicArn)
 
 	req := &sns.SubscribeInput{
 		Protocol:   aws.String(protocol),
 		Endpoint:   aws.String(endpoint),
-		TopicArn:   aws.String(topic_arn),
+		TopicArn:   aws.String(topicArn),
 		Attributes: attributes,
 	}
 
@@ -265,14 +265,14 @@ func subscribeToSNSTopic(d *schema.ResourceData, conn *sns.SNS) (output *sns.Sub
 		return nil, fmt.Errorf("Error creating SNS topic subscription: %s", err)
 	}
 
-	log.Printf("[DEBUG] Finished subscribing to topic %s with subscription arn %s", topic_arn,
+	log.Printf("[DEBUG] Finished subscribing to topic %s with subscription arn %s", topicArn,
 		aws.StringValue(output.SubscriptionArn))
 
 	if strings.Contains(protocol, "http") && subscriptionHasPendingConfirmation(output.SubscriptionArn) {
 
-		log.Printf("[DEBUG] SNS create topic subscription is pending so fetching the subscription list for topic : %s (%s) @ '%s'", endpoint, protocol, topic_arn)
+		log.Printf("[DEBUG] SNS create topic subscription is pending so fetching the subscription list for topic : %s (%s) @ '%s'", endpoint, protocol, topicArn)
 
-		err = resource.Retry(time.Duration(confirmation_timeout_in_minutes)*time.Minute, func() *resource.RetryError {
+		err = resource.Retry(time.Duration(confirmationTimeoutInMinutes)*time.Minute, func() *resource.RetryError {
 
 			subscription, err := findSubscriptionByNonID(d, conn)
 
@@ -281,7 +281,7 @@ func subscribeToSNSTopic(d *schema.ResourceData, conn *sns.SNS) (output *sns.Sub
 			}
 
 			if subscription == nil {
-				return resource.RetryableError(fmt.Errorf("Endpoint (%s) did not autoconfirm the subscription for topic %s", endpoint, topic_arn))
+				return resource.RetryableError(fmt.Errorf("Endpoint (%s) did not autoconfirm the subscription for topic %s", endpoint, topicArn))
 			}
 
 			output.SubscriptionArn = subscription.SubscriptionArn
