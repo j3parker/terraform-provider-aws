@@ -65,14 +65,11 @@ func resourceAwsMqBroker() *schema.Resource {
 				},
 			},
 			"deployment_mode": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Default:  mq.DeploymentModeSingleInstance,
-				ForceNew: true,
-				ValidateFunc: validation.StringInSlice([]string{
-					mq.DeploymentModeSingleInstance,
-					mq.DeploymentModeActiveStandbyMultiAz,
-				}, true),
+				Type:         schema.TypeString,
+				Optional:     true,
+				Default:      mq.DeploymentModeSingleInstance,
+				ForceNew:     true,
+				ValidateFunc: validation.StringInSlice(mq.DeploymentMode_Values(), true),
 			},
 			"encryption_options": {
 				Type:             schema.TypeList,
@@ -99,12 +96,10 @@ func resourceAwsMqBroker() *schema.Resource {
 				},
 			},
 			"engine_type": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
-				ValidateFunc: validation.StringInSlice([]string{
-					mq.EngineTypeActivemq,
-				}, true),
+				Type:         schema.TypeString,
+				Required:     true,
+				ForceNew:     true,
+				ValidateFunc: validation.StringInSlice(mq.EngineType_Values(), true),
 			},
 			"engine_version": {
 				Type:     schema.TypeString,
@@ -150,17 +145,9 @@ func resourceAwsMqBroker() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"day_of_week": {
-							Type:     schema.TypeString,
-							Required: true,
-							ValidateFunc: validation.StringInSlice([]string{
-								mq.DayOfWeekSunday,
-								mq.DayOfWeekMonday,
-								mq.DayOfWeekTuesday,
-								mq.DayOfWeekWednesday,
-								mq.DayOfWeekThursday,
-								mq.DayOfWeekFriday,
-								mq.DayOfWeekSaturday,
-							}, true),
+							Type:         schema.TypeString,
+							Required:     true,
+							ValidateFunc: validation.StringInSlice(mq.DayOfWeek_Values(), true),
 						},
 						"time_of_day": {
 							Type:     schema.TypeString,
