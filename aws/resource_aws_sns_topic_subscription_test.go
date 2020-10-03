@@ -550,7 +550,7 @@ resource "aws_api_gateway_integration" "test" {
   http_method             = aws_api_gateway_method.test.http_method
   integration_http_method = "POST"
   type                    = "AWS"
-  uri                     = aws_lambda_function.lambda.invoke_arn
+  uri                     = aws_lambda_function.test.invoke_arn
 }
 
 resource "aws_api_gateway_integration_response" "test" {
@@ -674,7 +674,7 @@ resource "aws_api_gateway_integration" "test" {
   http_method             = aws_api_gateway_method.test.http_method
   integration_http_method = "POST"
   type                    = "AWS"
-  uri                     = aws_lambda_function.lambda.invoke_arn
+  uri                     = aws_lambda_function.test.invoke_arn
 }
 
 resource "aws_api_gateway_integration_response" "test" {
@@ -794,14 +794,14 @@ EOF
 resource "aws_api_gateway_authorizer" "test" {
   name                   = %[1]q
   rest_api_id            = aws_api_gateway_rest_api.test.id
-  authorizer_uri         = aws_lambda_function.test.invoke_arn
+  authorizer_uri         = aws_lambda_function.authorizer.invoke_arn
   authorizer_credentials = aws_iam_role.invocation_role.arn
 }
 
-resource "aws_lambda_function" "test" {
+resource "aws_lambda_function" "authorizer" {
   filename         = "test-fixtures/lambda_basic_authorizer.zip"
   source_code_hash = filebase64sha256("test-fixtures/lambda_basic_authorizer.zip")
-  function_name    = %[1]q
+  function_name    = "%[1]s-authorizer"
   role             = aws_iam_role.iam_for_lambda.arn
   handler          = "main.authenticate"
   runtime          = "nodejs12.x"
@@ -830,7 +830,7 @@ resource "aws_api_gateway_gateway_response" "test" {
 
 resource "aws_sns_topic_subscription" "test" {
   depends_on             = [aws_lambda_permission.test]
-  topic_arn              = aws_sns_topic.test_topic.arn
+  topic_arn              = aws_sns_topic.test.arn
   protocol               = "https"
   endpoint               = replace(aws_api_gateway_deployment.test.invoke_url, "https://", "https://%[2]s:%[3]s@")
   endpoint_auto_confirms = true
