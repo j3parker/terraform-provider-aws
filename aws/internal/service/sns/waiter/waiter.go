@@ -19,7 +19,7 @@ func SnsTopicSubscriptionDeleted(conn *sns.SNS, subscriptionArn string) (*sns.Ge
 		Pending: []string{"available"},
 		Target:  []string{},
 		Refresh: SnsTopicSubscriptionStatus(conn, subscriptionArn),
-		Timeout: 5 * time.Minute,
+		Timeout: TopicSubscriptionDeleteTimeout,
 	}
 
 	log.Printf("[DEBUG] Waiting for SNS topic subscription (%s) deletion", subscriptionArn)

@@ -451,9 +451,9 @@ resource "aws_sqs_queue" "test" {
 }
 
 resource "aws_sns_topic_subscription" "test" {
-  topic_arn = aws_sns_topic.test_topic.arn
+  topic_arn = aws_sns_topic.test.arn
   protocol  = "sqs"
-  endpoint  = aws_sqs_queue.test_queue.arn
+  endpoint  = aws_sqs_queue.test.arn
 }
 `, rName)
 }
@@ -469,9 +469,9 @@ resource "aws_sqs_queue" "test" {
 }
 
 resource "aws_sns_topic_subscription" "test" {
-  topic_arn     = aws_sns_topic.test_topic.arn
+  topic_arn     = aws_sns_topic.test.arn
   protocol      = "sqs"
-  endpoint      = aws_sqs_queue.test_queue.arn
+  endpoint      = aws_sqs_queue.test.arn
   filter_policy = %[2]q
 }
 `, rName, policy)
@@ -489,9 +489,9 @@ resource "aws_sqs_queue" "test" {
 
 resource "aws_sns_topic_subscription" "test" {
   delivery_policy = %[2]q
-  endpoint        = aws_sqs_queue.test_queue.arn
+  endpoint        = aws_sqs_queue.test.arn
   protocol        = "sqs"
-  topic_arn       = aws_sns_topic.test_topic.arn
+  topic_arn       = aws_sns_topic.test.arn
 }
 `, rName, policy)
 }
@@ -507,10 +507,10 @@ resource "aws_sqs_queue" "test" {
 }
 
 resource "aws_sns_topic_subscription" "test" {
-  endpoint             = aws_sqs_queue.test_queue.arn
+  endpoint             = aws_sqs_queue.test.arn
   protocol             = "sqs"
   raw_message_delivery = %[2]t
-  topic_arn            = aws_sns_topic.test_topic.arn
+  topic_arn            = aws_sns_topic.test.arn
 }
 `, rName, rawMessageDelivery)
 }
@@ -585,9 +585,9 @@ resource "aws_iam_role" "test" {
 EOF
 }
 
-resource "aws_iam_role_policy" "policy" {
+resource "aws_iam_role_policy" "test" {
   name = %[1]q
-  role = aws_iam_role.iam_for_lambda.id
+  role = aws_iam_role.test.id
 
   policy = <<EOF
 {
@@ -608,7 +608,7 @@ EOF
 resource "aws_lambda_permission" "test" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.lambda.arn
+  function_name = aws_lambda_function.test.arn
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_deployment.test.execution_arn}/*"
 }
@@ -616,7 +616,7 @@ resource "aws_lambda_permission" "test" {
 resource "aws_lambda_function" "test" {
   filename         = "test-fixtures/lambda_confirm_sns.zip"
   function_name    = %[1]q
-  role             = aws_iam_role.iam_for_lambda.arn
+  role             = aws_iam_role.test.arn
   handler          = "main.confirm_subscription"
   source_code_hash = filebase64sha256("test-fixtures/lambda_confirm_sns.zip")
   runtime          = "python3.6"
@@ -629,8 +629,8 @@ resource "aws_api_gateway_deployment" "test" {
 }
 
 resource "aws_sns_topic_subscription" "test" {
-  depends_on             = [aws_lambda_permission.apigw_lambda]
-  topic_arn              = aws_sns_topic.test_topic.arn
+  depends_on             = [aws_lambda_permission.test]
+  topic_arn              = aws_sns_topic.test.arn
   protocol               = "https"
   endpoint               = aws_api_gateway_deployment.test.invoke_url
   endpoint_auto_confirms = true
@@ -732,12 +732,12 @@ EOF
 resource "aws_lambda_permission" "test" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.lambda.arn
+  function_name = aws_lambda_function.test.arn
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_deployment.test.execution_arn}/*"
 }
 
-resource "aws_lambda_function" "lambda" {
+resource "aws_lambda_function" "test" {
   filename         = "test-fixtures/lambda_confirm_sns.zip"
   function_name    = %[1]q
   role             = aws_iam_role.iam_for_lambda.arn
@@ -794,11 +794,11 @@ EOF
 resource "aws_api_gateway_authorizer" "test" {
   name                   = %[1]q
   rest_api_id            = aws_api_gateway_rest_api.test.id
-  authorizer_uri         = aws_lambda_function.authorizer.invoke_arn
+  authorizer_uri         = aws_lambda_function.test.invoke_arn
   authorizer_credentials = aws_iam_role.invocation_role.arn
 }
 
-resource "aws_lambda_function" "authorizer" {
+resource "aws_lambda_function" "test" {
   filename         = "test-fixtures/lambda_basic_authorizer.zip"
   source_code_hash = filebase64sha256("test-fixtures/lambda_basic_authorizer.zip")
   function_name    = %[1]q
@@ -829,7 +829,7 @@ resource "aws_api_gateway_gateway_response" "test" {
 }
 
 resource "aws_sns_topic_subscription" "test" {
-  depends_on             = [aws_lambda_permission.apigw_lambda]
+  depends_on             = [aws_lambda_permission.test]
   topic_arn              = aws_sns_topic.test_topic.arn
   protocol               = "https"
   endpoint               = replace(aws_api_gateway_deployment.test.invoke_url, "https://", "https://%[2]s:%[3]s@")
